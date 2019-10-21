@@ -17,7 +17,7 @@ long *bench_generate_test_array(size_t size);
 void bench_process_input(int argc, char **argv, struct config *con);
 void bench_init(struct config *con);
 void bench_print_config(struct config *con);
-void bench_print_out(double time, double size);
+void bench_print_out(int core, int thread, double time, double size);
 void bench_default_argument(struct config *con);
 
 #endif

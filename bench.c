@@ -121,8 +121,10 @@ void bench_print_config(struct config *con)
 	printf("	Testing memory block size:		%d\n", con->block_size);
 }
 
-void bench_print_out(double time, double size)
+void bench_print_out(int core, int thread, double time, double size)
 {
+	printf("Core: %d\t", core);
+	printf("Thread: %d\t", thread);
 	printf("Elapsed: %.5f\t", time);
     printf("MiB: %.5f\t", size);
     printf("Copy: %.3f MiB/s\n", size/time);

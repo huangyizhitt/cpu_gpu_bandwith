@@ -7,6 +7,8 @@ struct cpu_bench_arg {
 	int loops;
 	int block_size;
 	int size;
+	int core;
+	int thread;
 };
 
 

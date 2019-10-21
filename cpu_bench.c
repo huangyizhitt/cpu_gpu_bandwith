@@ -54,7 +54,7 @@ static void *cpu_bench_worker(void *arg)
 
 	elapse /= data->loops;
 	
-	bench_print_out(elapse, (double)bytes / MB);
+	bench_print_out(data->core, data->thread, elapse, (double)bytes / MB);
 			
 	free(b);
 	free(a);
@@ -96,6 +96,8 @@ int cpu_bench_init(struct cpu_bench *bench, struct config *con)
 			bench->thread[cpu_it][thread_it].arg.loops = loops;
 			bench->thread[cpu_it][thread_it].arg.size = con->size;
 			bench->thread[cpu_it][thread_it].arg.block_size = con->block_size;
+			bench->thread[cpu_it][thread_it].arg.core = cpu_it;
+			bench->thread[cpu_it][thread_it].arg.thread = thread_it;
 			
 			pthread_attr_init(&bench->thread[cpu_it][thread_it].attr);
 
