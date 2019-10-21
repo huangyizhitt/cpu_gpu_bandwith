@@ -47,7 +47,7 @@ void bench_process_input(int argc, char **argv, struct config *con)
 {
 	int opt;
 	double size;
-	while((opt = getopt(argc, argv, "hn:t:b:")) != EOF) {
+	while((opt = getopt(argc, argv, "hn:c:t:b:")) != EOF) {
 		switch(opt){
 			case 'h':
 				bench_usage();

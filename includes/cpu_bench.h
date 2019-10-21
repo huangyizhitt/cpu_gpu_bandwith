@@ -13,6 +13,7 @@ struct cpu_bench_arg {
 struct cpu_bench_thread {
 	struct cpu_bench_arg	arg;
 	pthread_t tid;
+	pthread_attr_t attr;
 };
 
 struct cpu_bench {

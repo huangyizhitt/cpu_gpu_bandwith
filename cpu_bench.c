@@ -1,8 +1,11 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <sys/time.h>
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sched.h>
 #include "bench.h"
 #include "cpu_bench.h"
 
@@ -93,7 +96,17 @@ int cpu_bench_init(struct cpu_bench *bench, struct config *con)
 			bench->thread[cpu_it][thread_it].arg.loops = loops;
 			bench->thread[cpu_it][thread_it].arg.size = con->size;
 			bench->thread[cpu_it][thread_it].arg.block_size = con->block_size;
-		
+			
+			pthread_attr_init(&bench->thread[cpu_it][thread_it].attr);
+
+			cpu_set_t cpu_info;
+			CPU_ZERO(&cpu_info);
+			CPU_SET(cpu_it, &cpu_info);
+			if(pthread_attr_setaffinity_np(&bench->thread[cpu_it][thread_it].attr, sizeof(cpu_set_t), &cpu_info)) {
+				printf("set affinity failed");
+        		goto fail_pthread_create;
+			}
+			
 			if(pthread_create(&bench->thread[cpu_it][thread_it].tid, NULL, cpu_bench_worker, (void *)&bench->thread[cpu_it][thread_it].arg)) {
 				printf("Fail pthread create, thread num is c:%dt:%d\n", cpu_it, thread_it);
 				goto fail_pthread_create;
@@ -104,9 +117,7 @@ int cpu_bench_init(struct cpu_bench *bench, struct config *con)
 	return 0;
 
 fail_pthread_create:
-	for(j = 0; j < thread_it; j++) {
-		pthread_cancel(bench->thread[cpu_it][j].tid);
-	}
+	
 	free(bench->thread[cpu_it]);
 
 fail_threads:
