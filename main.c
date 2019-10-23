@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "bench.h"
 #include "cpu_bench.h"
+#include "gpu_bench.h"
 
 int main(int argc, char **argv)
 {
@@ -16,8 +17,15 @@ int main(int argc, char **argv)
 	bench_print_config(&con);
 
 	bench_init(&con);
-	cpu_bench_init(&bench, &con);
-	cpu_bench_finish(&bench, &con);
+
+	if(con.cores > 0 && con.threads_per_core > 0) {
+		cpu_bench_init(&bench, &con);
+		cpu_bench_finish(&bench, &con);
+	}
+
+#if (GPU == 1)
+	gpu_bench(&con);
+#endif
 
 	return 0;
 }

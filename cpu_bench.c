@@ -41,12 +41,12 @@ static void test_memcpy_loops(char *d, char *s, size_t bytes, int block_size, in
 static void test_sequence_write(long *array, size_t bytes, int loops)
 {
 	long *start = array, *p;
-	long *end = start + bytes / sizeof(long);
+	long *stop = start + bytes / sizeof(long);
 	long value = rand();
 	
 	while(loops--) {
 		p = start;
-		while(p != end) {
+		while(p != stop) {
 			*p++ = value;
 		}
 	}
@@ -54,7 +54,7 @@ static void test_sequence_write(long *array, size_t bytes, int loops)
 
 static void *cpu_co_gpu_worker(void *arg)
 {
-	struct timeval start, end;
+	struct timeval start, stop;
 	struct cpu_bench_arg *data = (struct cpu_bench_arg*)arg;
 	unsigned long long bytes = data->size * sizeof(long);
 	int block_size = data->block_size;
@@ -80,9 +80,9 @@ static void *cpu_co_gpu_worker(void *arg)
 		TEST_MEMCPY((char *)b, (char *)a, bytes, block_size);
 		times++;
 	}
-	gettimeofday(&end, NULL);
-	elapse=((double)(end.tv_sec * 1000000 - start.tv_sec * 1000000 + 
-			end.tv_usec - start.tv_usec))/1000000;
+	gettimeofday(&stop, NULL);
+	elapse=((double)(stop.tv_sec * 1000000 - start.tv_sec * 1000000 + 
+			stop.tv_usec - start.tv_usec))/1000000;
 	elapse /= times;
 	return NULL;
 
@@ -95,7 +95,7 @@ fail_a:
 
 static void *cpu_bench_worker(void *arg)
 {
-	struct timeval start, end;
+	struct timeval start, stop;
 	double elapse = 0;
 	struct cpu_bench_arg *data = (struct cpu_bench_arg*)arg;
 	unsigned long long bytes = data->size * sizeof(long);
@@ -122,9 +122,9 @@ static void *cpu_bench_worker(void *arg)
 	test_memcpy_loops((char *)b, (char *)a, bytes, block_size, loops);
 //	test_sequence_write(a, bytes, loops);
 
-	gettimeofday(&end, NULL);
-	elapse=((double)(end.tv_sec * 1000000 - start.tv_sec * 1000000 + 
-			end.tv_usec - start.tv_usec))/1000000;
+	gettimeofday(&stop, NULL);
+	elapse=((double)(stop.tv_sec * 1000000 - start.tv_sec * 1000000 + 
+			stop.tv_usec - start.tv_usec))/1000000;
 	elapse /= loops;
 	
 	bench_print_out(data->core, data->thread, elapse, (double)bytes / MB);

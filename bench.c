@@ -66,14 +66,14 @@ void bench_process_input(int argc, char **argv, struct config *con)
 
 			case 'c':
 				con->cores = strtoul(optarg, (char **)NULL, 10);
-				if(con->cores <= 0) {
+				if(con->cores < 0) {
 					printf("Error: core number must >=1\n");
 					exit(1);
 				}
 
 			case 't':
 				con->threads_per_core = strtoul(optarg, (char **)NULL, 10);
-				if(con->threads_per_core <= 0) {
+				if(con->threads_per_core < 0) {
 					printf("Error: thread number must >=1\n");
 					exit(1);
 				}
