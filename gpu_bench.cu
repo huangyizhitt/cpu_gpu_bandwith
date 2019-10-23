@@ -1,10 +1,11 @@
 #include <cuda_runtime.h>
-//#include <helper_cuda.h>
 #include <cuda.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "bench.h"
 #include "gpu_bench.h"
+#include "helper_cuda.h"
+
 
 unsigned char *gpu_array_make_uma(unsigned int bytes)
 {
