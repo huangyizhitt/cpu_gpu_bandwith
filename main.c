@@ -18,14 +18,13 @@ int main(int argc, char **argv)
 
 	bench_init(&con);
 
-	if(con.cores > 0 && con.threads_per_core > 0) {
-		cpu_bench_init(&bench, &con);
-		cpu_bench_finish(&bench, &con);
-	}
+//	if(con.cores > 0 && con.threads_per_core > 0) {
+	cpu_bench_init(&bench, &con);
+//	}
 
 #if (GPU == 1)
 	gpu_bench(&con);
 #endif
-
+	cpu_bench_finish(&bench, &con);
 	return 0;
 }

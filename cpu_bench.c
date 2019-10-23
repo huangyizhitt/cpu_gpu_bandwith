@@ -84,6 +84,7 @@ static void *cpu_co_gpu_worker(void *arg)
 	elapse=((double)(stop.tv_sec * 1000000 - start.tv_sec * 1000000 + 
 			stop.tv_usec - start.tv_usec))/1000000;
 	elapse /= times;
+	bench_print_out(data->core, data->thread, elapse, (double)bytes / MB);
 	return NULL;
 
 fail_b:
@@ -181,7 +182,7 @@ int cpu_bench_init(struct cpu_bench *bench, struct config *con)
         		goto fail_pthread_create;
 			}
 			
-			if(pthread_create(&bench->thread[cpu_it][thread_it].tid, NULL, cpu_bench_worker, (void *)&bench->thread[cpu_it][thread_it].arg)) {
+			if(pthread_create(&bench->thread[cpu_it][thread_it].tid, NULL, cpu_co_gpu_worker, (void *)&bench->thread[cpu_it][thread_it].arg)) {
 				printf("Fail pthread create, thread num is c:%dt:%d\n", cpu_it, thread_it);
 				goto fail_pthread_create;
 			}

@@ -270,7 +270,7 @@ void check(T result, char const *const func, const char *const file, int const l
 }
 
 
-#ifdef __DRIVER_TYPES_H__
+
 // This will output the proper CUDA error strings in the event that a CUDA host call returns an error
 #define checkCudaErrors(val)           check ( (val), #val, __FILE__, __LINE__ )
 
