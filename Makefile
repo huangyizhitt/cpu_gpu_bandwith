@@ -5,10 +5,12 @@ NVCC = nvcc
 CFLAGS = -O2 -g 
 RM = rm -rf
 SRCS = $(wildcard *.c)
+CUDA_SRCS = $(wildcard *.cu)
 OBJS = $(SRCS:.c=.o)
+OBJS = $(CUDA_SRCS:.cu=.o)
 INCLUDES = ./includes
 LIBS = pthread
-HAVE_NVCC = $(shell if [ -x $(NVCC) ]; then echo "1"; else echo "0"; fi;)
+HAVE_NVCC = $(shell $(NVCC) -V | if [ $?==0 ]; then echo "1"; else echo "0"; fi)
 
 ifeq ($(HAVE_NVCC),1)
 	DEFINES = -DGPU=1
@@ -29,7 +31,7 @@ endif
 
 ifeq ($(HAVE_NVCC),1)
 %.o: %.cu
-	$(NVCC) -o $@ -c $(CFLAGS) $(DEFINES) -I$(INCLUDES)
+	$(NVCC) -o $@ -c $^ $(CFLAGS) $(DEFINES) -I$(INCLUDES)
 endif
 
 .PHONY:	clean

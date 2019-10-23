@@ -1,7 +1,8 @@
 #include <cuda_runtime.h>
-#include <helper_cuda.h>
+//#include <helper_cuda.h>
 #include <cuda.h>
-#include <rand.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "bench.h"
 #include "gpu_bench.h"
 
@@ -16,8 +17,8 @@ unsigned char *gpu_array_make_uma(unsigned int bytes)
 
 double test_host_to_device_uma(unsigned char *array, unsigned int bytes, int loops)
 {
-	double elapse = 0;
-	double bandwidth = 0;
+	float elapse = 0;
+	float bandwidth = 0;
 	cudaEvent_t start, stop;
 
 	checkCudaErrors(cudaEventCreate(&start));
@@ -33,10 +34,10 @@ double test_host_to_device_uma(unsigned char *array, unsigned int bytes, int loo
 
 	checkCudaErrors(cudaEventSynchronize(start));
 	checkCudaErrors(cudaEventSynchronize(stop));
-    checkCudaErrors(cudaEventElapsedTime(&elapse, start, stop));
+ 	checkCudaErrors(cudaEventElapsedTime(&elapse, start, stop));
 	
-	bandwidth =  ((double)(1<<10) * bytes * loops /
-                     (elapse * (double)(1 << 20));
+	bandwidth =  ((float)(1<<10) * bytes * loops) /
+                     (elapse * (float)(1 << 20));
 	
 	checkCudaErrors(cudaEventDestroy(stop));
 	checkCudaErrors(cudaEventDestroy(start));
@@ -53,7 +54,7 @@ void gpu_bench(struct config *con)
 {
 	unsigned int bytes = con->size * sizeof(long);
 	double bandwidth;
-	char *array = gpu_array_make_uma(con->size * sizeof(long));
+	unsigned char *array = gpu_array_make_uma(con->size * sizeof(long));
 	bandwidth = test_host_to_device_uma(array, bytes, con->loops);
 	printf("Host to device: %.3f MiB/s\n", bandwidth);
 	gpu_array_destroy(array);
