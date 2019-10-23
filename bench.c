@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <limits.h>
+#include <time.h>
 #include "bench.h"
 
 #define VERSION	"1.0"
@@ -11,6 +12,8 @@
 #define DEFAULT_CPU_CORES	sysconf(_SC_NPROCESSORS_ONLN)
 #define DEFALUT_THREADS_NUM_IN_CPU	1
 #define DEFAULT_LOOPS 10
+
+int gpu_done;
 
 void bench_usage()
 {
@@ -101,7 +104,8 @@ void bench_process_input(int argc, char **argv, struct config *con)
 
 void bench_init(struct config *con)
 {
-
+	srand((unsigned)time(NULL));
+	gpu_done = 0;
 }
 
 void bench_default_argument(struct config *con)

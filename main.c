@@ -15,6 +15,7 @@ int main(int argc, char **argv)
 
 	bench_print_config(&con);
 
+	bench_init(&con);
 	cpu_bench_init(&bench, &con);
 	cpu_bench_finish(&bench, &con);
 

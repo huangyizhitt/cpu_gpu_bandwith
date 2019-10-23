@@ -13,6 +13,8 @@ struct config{
 	size_t size;
 };
 
+extern int gpu_done;
+
 long *bench_generate_test_array(size_t size);
 void bench_process_input(int argc, char **argv, struct config *con);
 void bench_init(struct config *con);

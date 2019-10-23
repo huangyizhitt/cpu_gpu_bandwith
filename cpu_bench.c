@@ -12,15 +12,54 @@
 
 pthread_barrier_t barrier;				//barrier of memory bandwith test for threads
 
-static void *cpu_bench_worker(void *arg)
+#define TEST_MEMCPY(d, s, bytes, block_size)		\
+{													\
+	char *src, *dst;								\
+	size_t  remain;									\
+	src = s;										\
+	dst = d;										\
+	for(remain = bytes; remain >= block_size; remain -= block_size, src += block_size) {	\
+		dst = memcpy(dst, src, block_size);													\
+	}																						\
+	if(remain) {																			\
+		dst = memcpy(dst, src, remain);														\
+	}																						\
+}
+
+static inline void test_memcpy(char *d, char *s, size_t bytes, int block_size)
+{
+	
+}
+
+static void test_memcpy_loops(char *d, char *s, size_t bytes, int block_size, int loops)
+{
+	while(loops--) {
+		TEST_MEMCPY(d, s, bytes, block_size);
+	}
+}
+
+static void test_sequence_write(long *array, size_t bytes, int loops)
+{
+	long *start = array, *p;
+	long *end = start + bytes / sizeof(long);
+	long value = rand();
+	
+	while(loops--) {
+		p = start;
+		while(p != end) {
+			*p++ = value;
+		}
+	}
+}
+
+static void *cpu_co_gpu_worker(void *arg)
 {
 	struct timeval start, end;
-	double elapse = 0;
 	struct cpu_bench_arg *data = (struct cpu_bench_arg*)arg;
 	unsigned long long bytes = data->size * sizeof(long);
 	int block_size = data->block_size;
-	int loops = data->loops;
-	unsigned long long remain;
+	unsigned long long times = 0;
+	double elapse;
 
 	long *a = bench_generate_test_array(data->size);
 	if(!a) {
@@ -34,37 +73,70 @@ static void *cpu_bench_worker(void *arg)
 		goto fail_b;
 	}
 
-	char *src, *dst;
-	
-	while(loops--) {
-		src = (char *)a;
-		dst = (char *)b;
-		pthread_barrier_wait(&barrier);
-		gettimeofday(&start, NULL);
-		for(remain = bytes; remain >= block_size; remain -= block_size, src += block_size) {
-			dst = memcpy(dst, src, block_size);
-		}
-		if(remain) {
-			dst = memcpy(dst, src, remain);
-		}
-		gettimeofday(&end, NULL);
-		elapse+=((double)(end.tv_sec * 1000000 - start.tv_sec * 1000000 + 
+	pthread_barrier_wait(&barrier);
+	gettimeofday(&start, NULL);
+	while(1) {
+		if(gpu_done) break;
+		TEST_MEMCPY((char *)b, (char *)a, bytes, block_size);
+		times++;
+	}
+	gettimeofday(&end, NULL);
+	elapse=((double)(end.tv_sec * 1000000 - start.tv_sec * 1000000 + 
 			end.tv_usec - start.tv_usec))/1000000;
+	elapse /= times;
+	return NULL;
+
+fail_b:
+	free(a);
+fail_a:
+	pthread_exit((void *)1);
+
+}
+
+static void *cpu_bench_worker(void *arg)
+{
+	struct timeval start, end;
+	double elapse = 0;
+	struct cpu_bench_arg *data = (struct cpu_bench_arg*)arg;
+	unsigned long long bytes = data->size * sizeof(long);
+	int block_size = data->block_size;
+	int loops = data->loops;
+	
+	long *a = bench_generate_test_array(data->size);
+	if(!a) {
+		printf("Fail to generate test array a\n");
+		goto fail_a;
+	}
+	
+	long *b = bench_generate_test_array(data->size);
+	if(!b) {
+		printf("Fail to generate test array b\n");
+		goto fail_b;
 	}
 
-	elapse /= data->loops;
+	
+	pthread_barrier_wait(&barrier);
+	
+	gettimeofday(&start, NULL);
+	
+	test_memcpy_loops((char *)b, (char *)a, bytes, block_size, loops);
+//	test_sequence_write(a, bytes, loops);
+
+	gettimeofday(&end, NULL);
+	elapse=((double)(end.tv_sec * 1000000 - start.tv_sec * 1000000 + 
+			end.tv_usec - start.tv_usec))/1000000;
+	elapse /= loops;
 	
 	bench_print_out(data->core, data->thread, elapse, (double)bytes / MB);
 			
 	free(b);
 	free(a);
 	pthread_exit((void *)0);
-	return;
+	return NULL;
 fail_b:
 	free(a);
 fail_a:
 	pthread_exit((void *)1);
-	return;
 }
 
 int cpu_bench_init(struct cpu_bench *bench, struct config *con)
