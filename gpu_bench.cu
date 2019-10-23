@@ -65,7 +65,7 @@ __global__ void gpu_array_read(unsigned char *array, unsigned int size)
 float test_device_access(unsigned char *array, unsigned int size)
 {
 	int threads = 1024;
-	int blocks = (*bytes - 1) / threads + 1;
+	int blocks = (size - 1) / threads + 1;
 	float elapse = 0;
 	float bandwidth = 0;
 	cudaEvent_t start, stop;
@@ -74,14 +74,16 @@ float test_device_access(unsigned char *array, unsigned int size)
 	checkCudaErrors(cudaEventCreate(&stop));
 
 	checkCudaErrors(cudaEventRecord(start, 0));
-	gpu_array_read<<<blocks, threads>>>(array, bytes);
+	gpu_array_read<<<blocks, threads>>>(array, size);
 	checkCudaErrors(cudaDeviceSynchronize());
 	checkCudaErrors(cudaEventRecord(stop, 0));
 
 	checkCudaErrors(cudaEventSynchronize(start));
 	checkCudaErrors(cudaEventSynchronize(stop));
+	checkCudaErrors(cudaEventElapsedTime(&elapse, start, stop));
 	gpu_done = 1;
-	bandwidth =  ((long)bytes * loops / MB) / (elapse / 1000);
+	printf("elapse is %f\n", elapse);
+	bandwidth =  ((long)size / MB) / (elapse / 1000);
 	
 	checkCudaErrors(cudaEventDestroy(stop));
 	checkCudaErrors(cudaEventDestroy(start));
@@ -98,7 +100,7 @@ void gpu_bench(struct config *con)
 	bandwidth = test_host_to_device_uma(array, bytes, con->loops);
 	printf("Host to device: %.3f MiB/s\n", bandwidth);
 
-	bandwidth = test_device_access(array, bytes, con->loops);
+	bandwidth = test_device_access(array, bytes);
 	printf("device access memory: %.3f MiB/s\n", bandwidth);
 	
 	gpu_array_destroy(array);

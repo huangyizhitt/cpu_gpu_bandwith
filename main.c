@@ -12,18 +12,18 @@ int main(int argc, char **argv)
 
 	bench_default_argument(&con);
 
+	bench_init(&con);
 	bench_process_input(argc, argv, &con);
 
 	bench_print_config(&con);
-
-	bench_init(&con);
 
 //	if(con.cores > 0 && con.threads_per_core > 0) {
 	cpu_bench_init(&bench, &con);
 //	}
 
 #if (GPU == 1)
-	gpu_bench(&con);
+	if(use_gpu)
+		gpu_bench(&con);
 #endif
 	cpu_bench_finish(&bench, &con);
 	return 0;

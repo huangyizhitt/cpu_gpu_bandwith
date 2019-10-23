@@ -14,6 +14,7 @@ struct config{
 };
 
 extern int gpu_done;
+extern int use_gpu;
 
 long *bench_generate_test_array(size_t size);
 void bench_process_input(int argc, char **argv, struct config *con);

@@ -14,6 +14,7 @@
 #define DEFAULT_LOOPS 10
 
 int gpu_done;
+int use_gpu;
 
 void bench_usage()
 {
@@ -50,11 +51,15 @@ void bench_process_input(int argc, char **argv, struct config *con)
 {
 	int opt;
 	double size;
-	while((opt = getopt(argc, argv, "hn:c:t:b:")) != EOF) {
+	while((opt = getopt(argc, argv, "hgn:c:t:b:")) != EOF) {
 		switch(opt){
 			case 'h':
 				bench_usage();
 				exit(0);
+
+			case 'g':
+				use_gpu = 1;
+				break;
 
 			case 'n':
 				con->loops = strtoul(optarg, (char **)NULL, 10);
@@ -106,6 +111,7 @@ void bench_init(struct config *con)
 {
 	srand((unsigned)time(NULL));
 	gpu_done = 0;
+	use_gpu = 0;
 }
 
 void bench_default_argument(struct config *con)

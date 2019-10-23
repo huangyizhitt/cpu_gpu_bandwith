@@ -181,11 +181,18 @@ int cpu_bench_init(struct cpu_bench *bench, struct config *con)
 				printf("set affinity failed");
         		goto fail_pthread_create;
 			}
-			
-			if(pthread_create(&bench->thread[cpu_it][thread_it].tid, NULL, cpu_co_gpu_worker, (void *)&bench->thread[cpu_it][thread_it].arg)) {
-				printf("Fail pthread create, thread num is c:%dt:%d\n", cpu_it, thread_it);
-				goto fail_pthread_create;
-			}
+
+			if(use_gpu) {			
+				if(pthread_create(&bench->thread[cpu_it][thread_it].tid, NULL, cpu_co_gpu_worker, (void *)&bench->thread[cpu_it][thread_it].arg)) {
+					printf("Fail pthread create, thread num is c:%dt:%d\n", cpu_it, thread_it);
+					goto fail_pthread_create;
+				}
+			} else { 
+				if(pthread_create(&bench->thread[cpu_it][thread_it].tid, NULL, cpu_bench_worker, (void *)&bench->thread[cpu_it][thread_it].arg)) {
+					printf("Fail pthread create, thread num is c:%dt:%d\n", cpu_it, thread_it);
+					goto fail_pthread_create;
+				}
+			}		
 		}
 	}
 
