@@ -11,10 +11,8 @@ int main(int argc, char **argv)
 	int cpu_it, thread_it;
 
 	bench_default_argument(&con);
-
-	bench_init(&con);
 	bench_process_input(argc, argv, &con);
-
+	bench_init(&con);
 	bench_print_config(&con);
 
 //	if(con.cores > 0 && con.threads_per_core > 0) {
@@ -26,5 +24,7 @@ int main(int argc, char **argv)
 		gpu_bench(&con);
 #endif
 	cpu_bench_finish(&bench, &con);
+
+	bench_deinit(&con);
 	return 0;
 }

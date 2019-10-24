@@ -2,7 +2,7 @@
 
 CC = gcc
 NVCC = nvcc
-CFLAGS = -O2 -g 
+CFLAGS = -O2
 RM = rm -rf
 SRCS = $(wildcard *.c)
 CUDA_SRCS = $(wildcard *.cu)

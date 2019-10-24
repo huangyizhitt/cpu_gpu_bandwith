@@ -58,8 +58,11 @@ static void *cpu_co_gpu_worker(void *arg)
 	struct cpu_bench_arg *data = (struct cpu_bench_arg*)arg;
 	unsigned long long bytes = data->size * sizeof(long);
 	int block_size = data->block_size;
-	unsigned long long times = 0;
+	unsigned long long total_bytes = 0;
 	double elapse;
+	enum trans_status status;
+	char *src, *dst;							
+	size_t  remain;	
 
 	long *a = bench_generate_test_array(data->size);
 	if(!a) {
@@ -73,18 +76,40 @@ static void *cpu_co_gpu_worker(void *arg)
 		goto fail_b;
 	}
 
-	pthread_barrier_wait(&barrier);
+	status = gpu_test_status;
+	pthread_barrier_wait(&gpu_barrier);
+
+retry:
 	gettimeofday(&start, NULL);
-	while(1) {
-		if(gpu_done) break;
-		TEST_MEMCPY((char *)b, (char *)a, bytes, block_size);
-		times++;
+	while(1) {							
+		src = (char *)a;										
+		dst = (char *)b;										
+		for(remain = bytes; remain >= block_size; remain -= block_size, src += block_size) {
+			if(status != gpu_test_status) goto out;
+			dst = memcpy(dst, src, block_size);		
+			total_bytes += block_size;
+		}																						
+		if(remain) {																			
+			dst = memcpy(dst, src, remain);		
+			total_bytes += remain;
+		}
 	}
+
+out:
 	gettimeofday(&stop, NULL);
 	elapse=((double)(stop.tv_sec * 1000000 - start.tv_sec * 1000000 + 
 			stop.tv_usec - start.tv_usec))/1000000;
-	elapse /= times;
-	bench_print_out(data->core, data->thread, elapse, (double)bytes / MB);
+	
+	if(status == HOST_TO_DEVICE || status == DEVICE) {
+		bench_print_out(data->core, data->thread, elapse, (double)total_bytes / MB);
+	}
+
+	status = gpu_test_status;
+	total_bytes = 0;
+	pthread_barrier_wait(&gpu_barrier);										//all thread and gpu ready!
+
+	if(gpu_test_status != COMPLETE) goto retry;
+	
 	return NULL;
 
 fail_b:

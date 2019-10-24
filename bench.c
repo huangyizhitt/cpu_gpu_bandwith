@@ -12,9 +12,15 @@
 #define DEFAULT_CPU_CORES	sysconf(_SC_NPROCESSORS_ONLN)
 #define DEFALUT_THREADS_NUM_IN_CPU	1
 #define DEFAULT_LOOPS 10
+#define DEFAULT_GPU_ARRAY_SIZE	10	
 
-int gpu_done;
 int use_gpu;
+enum trans_status gpu_test_status;
+
+bool **thread_status;
+pthread_barrier_t gpu_barrier;
+
+
 
 void bench_usage()
 {
@@ -25,6 +31,8 @@ void bench_usage()
 	printf("	-c: number of cpu core in test(default: %ld)\n", DEFAULT_CPU_CORES);
 	printf("	-t: number of thread in per cpu core(default: %d)\n", DEFALUT_THREADS_NUM_IN_CPU);
 	printf("	-b: block size in bytes(default: %d)\n", DEFALUT_BLOCK_SIZE);
+	printf("	-G: use gpu and gpu array size is default %dMB\n", DEFAULT_GPU_ARRAY_SIZE);
+	printf("	-g: use gpu and set gpu array size in MB\n");
 	printf("\nThe default is to run default config\n");
 }
 
@@ -51,14 +59,24 @@ void bench_process_input(int argc, char **argv, struct config *con)
 {
 	int opt;
 	double size;
-	while((opt = getopt(argc, argv, "hgn:c:t:b:")) != EOF) {
+	while((opt = getopt(argc, argv, "hGg:n:c:t:b:")) != EOF) {
 		switch(opt){
 			case 'h':
 				bench_usage();
 				exit(0);
 
+			case 'G':
+				use_gpu = 1;
+				con->gpu_array_size = DEFAULT_GPU_ARRAY_SIZE * MB / sizeof(unsigned char);
+				break;
+
 			case 'g':
 				use_gpu = 1;
+				con->gpu_array_size = strtoul(optarg, (char **)NULL, 10) * MB / sizeof(unsigned char);
+				if(con->gpu_array_size < 0) {
+					printf("Error: gpu array size must >0\n");
+					exit(1);
+				}
 				break;
 
 			case 'n':
@@ -109,9 +127,35 @@ void bench_process_input(int argc, char **argv, struct config *con)
 
 void bench_init(struct config *con)
 {
+	int cpu_it, thread_it; 
+	int threads = con->cores * con->threads_per_core;
 	srand((unsigned)time(NULL));
-	gpu_done = 0;
-	use_gpu = 0;
+
+	gpu_test_status = INIT;
+	thread_status = (bool **) malloc(con->cores * sizeof(bool *));
+	for(cpu_it = 0; cpu_it < con->cores; cpu_it++) {
+		thread_status[cpu_it] = (bool *)malloc(con->threads_per_core * sizeof(bool));
+		for(thread_it = 0; thread_it < con->threads_per_core; thread_it++) {
+			thread_status[cpu_it][thread_it] = 0;
+		}
+	}
+
+	if(use_gpu) {
+		pthread_barrier_init(&gpu_barrier, NULL, threads+1);
+	}
+}
+
+void bench_deinit(struct config *con)
+{
+	int cpu_it, thread_it; 
+	for(cpu_it = 0; cpu_it < con->cores; cpu_it++) {
+		free(thread_status[cpu_it]);
+	}
+	free(thread_status);
+
+	if(use_gpu) {
+		pthread_barrier_destroy(&gpu_barrier);
+	}
 }
 
 void bench_default_argument(struct config *con)
@@ -120,6 +164,7 @@ void bench_default_argument(struct config *con)
 	con->cores = DEFAULT_CPU_CORES;
 	con->threads_per_core = DEFALUT_THREADS_NUM_IN_CPU;
 	con->block_size = DEFALUT_BLOCK_SIZE;
+	use_gpu = 0;
 }
 
 void bench_print_config(struct config *con)
