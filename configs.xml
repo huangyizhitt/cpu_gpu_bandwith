@@ -1,46 +1,43 @@
 <bench>
-	<CPU>
-		<name>Intel I9-9900K</name>
+	<version>bench1.0</version>
+	<CPUbench>
+		<name>intel</name>
 		<num>4</num>
-
-		<CPU0>
+		<loops>10</loops>
+		<CPU>
 			<thread_num>1</thread_num>
-			<thread0>
+			<thread>
 				<type>0</type>
 				<size>1MB</size>
 				<block_size>4096</block_size>
-			</thread0>
-		</CPU0>
-
-		<CPU1>
+			</thread>
+		</CPU>
+		<CPU>
 			<thread_num>1</thread_num>
-			<thread0>
+			<thread>
 				<type>0</type>
 				<size>1MB</size>
 				<block_size>4096</block_size>
-			</thread0>
-		</CPU1>
-
-		<CPU2>
+			</thread>
+		</CPU>
+		<CPU>
 			<thread_num>1</thread_num>
-			<thread0>
+			<thread>
 				<type>0</type>
 				<size>1MB</size>
 				<block_size>4096</block_size>
-			</thread0>
-		</CPU2>
-
-		<CPU3>
+			</thread>
+		</CPU>
+		<CPU>
 			<thread_num>1</thread_num>
-			<thread0>
+			<thread>
 				<type>0</type>
 				<size>1MB</size>
 				<block_size>4096</block_size>
-			</thread0>
-		</CPU3>
-	</CPU>
-
-	<GPU>
+			</thread>
+		</CPU>
+	</CPUbench>
+	<GPUbench>
 		<size>100MB</size>
-	</GPU>
+	</GPUbench>
 </bench>

@@ -12,13 +12,41 @@
 #define TRUE	1
 #define FALSE	0
 
+enum test_type {
+	MEMCPY = 0,
+	SEQUENTIAL_WRITE,
+	RANDOM_WRITE,
+	UNKNOWN,
+};
+
+//thread descriptor
+struct thread {
+	enum test_type type;							//test type
+	unsigned long long size;						//test data size in bytes
+	unsigned long long block_size;					//block size in bytes
+};
+
+//CPU descriptor
+struct cpu {
+	int threads_num;								//number of thread in cpu
+	struct thread *threads;							//threads in CPU	
+};
+
+//GPU descriptor
+struct gpu_config {
+	unsigned long long size;						//test data size in bytes
+};
+
+struct cpu_config{
+	char name[20];									//CPU name
+	int cores;										//number of cpu core in test 
+	int loops;										//number of run times per test
+	struct cpu *cpus;								//CPUs in test	
+};
+
 struct config{
-	int loops;
-	int cores;
-	int threads_per_core;
-	int block_size;
-	size_t size;						//CPU array size
-	size_t gpu_array_size;				//GPU array size
+	struct cpu_config *cpu_con;
+	struct gpu_config *gpu_con;
 };
 
 enum trans_status {
