@@ -34,6 +34,7 @@ struct cpu {
 
 //GPU descriptor
 struct gpu_config {
+	char name[20];									//GPU name
 	unsigned long long size;						//test data size in bytes
 };
 

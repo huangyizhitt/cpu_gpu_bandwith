@@ -1,7 +1,6 @@
 <bench>
-	<version>bench1.0</version>
 	<CPUbench>
-		<name>intel</name>
+		<name>Intel I9-9900K</name>
 		<num>4</num>
 		<loops>10</loops>
 		<CPU>
@@ -38,6 +37,7 @@
 		</CPU>
 	</CPUbench>
 	<GPUbench>
+		<name>GTX 1080</name>
 		<size>100MB</size>
 	</GPUbench>
 </bench>
