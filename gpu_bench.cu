@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include "config.h"
 #include "bench.h"
 #include "gpu_bench.h"
 #include "helper_cuda.h"

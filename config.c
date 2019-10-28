@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include "bench.h"
+#include "config.h"
 
 static int xmlStrchar(xmlChar *str, char c)
 {

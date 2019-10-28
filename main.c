@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include "config.h"
 #include "bench.h"
 #include "cpu_bench.h"
 #include "gpu_bench.h"

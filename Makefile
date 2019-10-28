@@ -2,7 +2,7 @@
 
 CC = gcc
 NVCC = nvcc
-CFLAGS = -O2
+CFLAGS = -O2 -std=gnu99
 RM = rm -rf
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
@@ -37,7 +37,7 @@ ifeq ($(HAVE_NVCC),1)
 endif
 
 %.o: %.c 
-	$(CC) -o $@ -c $^ $(CFLAGS) $(DEFINES) $(INCLUDES) $(LIBS)
+	$(CC) -o $@ -c $^ $(CFLAGS) $(DEFINES) $(INCLUDES)
 
 .PHONY:	clean
 clean:

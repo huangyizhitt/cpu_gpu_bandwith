@@ -4,18 +4,20 @@
 #include <unistd.h>
 #include <limits.h>
 #include <time.h>
+#include <pthread.h>
+#include "config.h"
 #include "bench.h"
 
 #define VERSION	"1.0"
 
-bool use_cpu;
-bool use_gpu;
+bool use_cpu = false;
+bool use_gpu = false;
 enum trans_status gpu_test_status;
 
 bool **thread_status;
 pthread_barrier_t gpu_barrier;
 
-
+static char *label[8] = {"All(Memcpy, SequentialWrite, RandomWrite, Scale, Add, Triad)", "Memcpy", "SequentialWrite", "RandomWrite", "Scale", "Add", "Triad", "Unknown"};
 
 void bench_usage()
 {
@@ -79,7 +81,7 @@ void bench_process_input(int argc, char **argv, struct config *con)
 				}
 				break;
 
-			case 'F':
+			case 'f':
 				if(config_get_from_xml(optarg, con) == false) {
 					printf("get config from xml fail\n");
 					exit(1);
@@ -101,7 +103,7 @@ void bench_process_input(int argc, char **argv, struct config *con)
 	}
 }
 
-/*void bench_init(struct config *con)
+void bench_init(struct config *con)
 {
 	int cpu_it, thread_it; 
 	int threads = con->cores * con->threads_per_core;
@@ -116,7 +118,7 @@ void bench_process_input(int argc, char **argv, struct config *con)
 		}
 	}
 
-	if(use_gpu) {
+	if(use_gpu & use_cpu) {
 		pthread_barrier_init(&gpu_barrier, NULL, threads+1);
 	}
 }
@@ -132,7 +134,7 @@ void bench_deinit(struct config *con)
 	if(use_gpu) {
 		pthread_barrier_destroy(&gpu_barrier);
 	}
-}*/
+}
 
 void bench_print_config(struct config *con)
 {
@@ -142,14 +144,14 @@ void bench_print_config(struct config *con)
 			for(int i = 0; i < con->cpu_con->cores; i++) {
 				printf("\tcpu %d, thread num: %d\n", i, con->cpu_con->cpus[i].threads_num);
 				for(int j = 0; j < con->cpu_con->cpus[i].threads_num; j++) {
-					printf("\tthread %d, workload type: %d, size: %lld, block_size: %lld\n", j, con->cpu_con->cpus[i].threads[j].type, \
-						con->cpu_con->cpus[i].threads[j].size, con->cpu_con->cpus[i].threads[j].block_size);
+					printf("\tthread %d, workload size: %.3fMB, block_size: %lld, type: %s\n", j, (double)con->cpu_con->cpus[i].threads[j].size/MB,	\
+						 con->cpu_con->cpus[i].threads[j].block_size, label[con->cpu_con->cpus[i].threads[j].type]);
 				}
 			}
 		}
 
 		if(con->gpu_con) {
-			printf("GPU name: %s, workload size: %lld, gpu test type: %d\n", con->gpu_con->name, con->gpu_con->size, con->gpu_con->type);
+			printf("GPU name: %s, workload size: %.3fMB, gpu test type: %s\n", con->gpu_con->name, (double)con->gpu_con->size/MB, label[con->gpu_con->type]);
 		}
 	}
 }

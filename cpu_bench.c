@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sched.h>
+#include "config.h"
 #include "bench.h"
 #include "cpu_bench.h"
 
