@@ -52,7 +52,7 @@ static void test_sequence_write(long *array, size_t bytes, int loops)
 	}
 }
 
-static void *cpu_co_gpu_worker(void *arg)
+/*static void *cpu_co_gpu_worker(void *arg)
 {
 	struct timeval start, stop;
 	struct cpu_bench_arg *data = (struct cpu_bench_arg*)arg;
@@ -163,13 +163,13 @@ fail_b:
 	free(a);
 fail_a:
 	pthread_exit((void *)1);
-}
+}*/
 
-int cpu_bench_init(struct cpu_bench *bench, struct config *con)
+/*int cpu_bench_init(struct cpu_bench *bench, struct config *con)
 {
 	int cpu_it, thread_it, i, j;
-	int cpu_cores = con->cores;
-	int threads_per_core = con->threads_per_core;
+	int cpu_cores = con->cpu_con->cores;
+	int threads_per_core = con->;
 	int loops = con->loops;
 	int threads = cpu_cores * threads_per_core; 
 
@@ -241,9 +241,9 @@ fail_threads:
 fail_cpus:
 	pthread_barrier_destroy(&barrier);
 	return -1;
-}
+}*/
 
-void cpu_bench_finish(struct cpu_bench *bench, struct config *con)
+/*void cpu_bench_finish(struct cpu_bench *bench, struct config *con)
 {
 	int cpu_it, thread_it;
 	int cpu_cores = con->cores;
@@ -264,6 +264,6 @@ void cpu_bench_finish(struct cpu_bench *bench, struct config *con)
 	free(bench->thread);
 	
 	pthread_barrier_destroy(&barrier);
-}
+}*/
 
 

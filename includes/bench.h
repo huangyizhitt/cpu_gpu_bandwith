@@ -12,18 +12,29 @@
 #define TRUE	1
 #define FALSE	0
 
+#define DEFAULT_BLOCK_SIZE					4096
+#define DEFALUT_THREADS_NUM_IN_CPU			1
+#define DEFAULT_LOOPS 						10
+#define DEFAULT_CPU_SIZE					10	
+#define DEFAULT_GPU_SIZE					100
+#define DEFAULT_CONFIGURATION_FILE			"configs.xml"
+#define DEFAULT_CPU_NAME					"CPU"
+#define DEFAULT_GPU_NAME					"GPU"
+#define DEFAULT_CPU_CORES					sysconf(_SC_NPROCESSORS_ONLN)
+#define DEFAULT_TEST_TYPE					MEMCPY
+
 enum test_type {
 	MEMCPY = 0,
 	SEQUENTIAL_WRITE,
 	RANDOM_WRITE,
-	UNKNOWN,
+	UNKNOWN_TYPE,
 };
 
 //thread descriptor
 struct thread {
 	enum test_type type;							//test type
-	unsigned long long size;						//test data size in bytes
-	unsigned long long block_size;					//block size in bytes
+	long long size;									//test data size in bytes
+	long long block_size;							//block size in bytes
 };
 
 //CPU descriptor
@@ -35,7 +46,8 @@ struct cpu {
 //GPU descriptor
 struct gpu_config {
 	char name[20];									//GPU name
-	unsigned long long size;						//test data size in bytes
+	enum test_type type;							//test type
+	long long size;									//test data size in bytes
 };
 
 struct cpu_config{
@@ -61,7 +73,15 @@ enum trans_status {
 	COMPLETE,							
 };
 
-extern int use_gpu;
+enum device {
+	CPU=0,
+	GPU,
+	FPGA,
+	UNKNOWN_DEVICE,
+};
+
+extern bool use_gpu;
+extern bool use_cpu;
 extern enum trans_status test_status;
 extern bool **thread_status;
 extern pthread_barrier_t gpu_barrier;
@@ -75,6 +95,12 @@ void bench_deinit(struct config *con);
 void bench_print_config(struct config *con);
 void bench_print_out(int core, int thread, double time, double size);
 void bench_default_argument(struct config *con);
+bool config_get_from_xml(char *xml, struct config* con);
+struct config *config_create();
+void config_destroy(struct config *con);
+bool config_get_from_default(enum device dev, struct config *con);
+
+
 
 static inline void bench_reset_thread_status(int core_id, int thread_id)
 {

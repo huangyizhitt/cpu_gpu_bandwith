@@ -2,11 +2,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include "bench.h"
 
-int xmlStrchar(xmlChar *str, char c)
+static int xmlStrchar(xmlChar *str, char c)
 {
 	int i = 0;
 	while(str[i] != '\0') {
@@ -18,7 +19,28 @@ int xmlStrchar(xmlChar *str, char c)
 	return -1;
 }
 
-bool thread_attributes_get_from_xml(xmlNodePtr thread_node, struct thread *thread, int thread_id)
+static unsigned long long to_bytes(xmlNodePtr cur_node)
+{
+	xmlChar		*key;
+	int index;
+	char str[64];
+	long long size;
+
+	key = xmlNodeGetContent(cur_node);
+	if((index = xmlStrchar(key, 'M')) != -1) {
+		strncpy(str, (char *)key, index);
+		size = atoll(str) * MB;
+	} else if((index = xmlStrchar(key, 'K')) != -1) {
+		strncpy(str, (char *)key, index);
+		size = atoll(str) * KB;
+	} else {
+		size = atoll((char *)key);
+	}
+	xmlFree(key);
+	return size;
+}
+
+static bool thread_attributes_get_from_xml(xmlNodePtr thread_node, struct thread *thread, int thread_id)
 {
 	xmlNodePtr cur_node = thread_node->children;
 	xmlChar		*key;
@@ -31,29 +53,9 @@ bool thread_attributes_get_from_xml(xmlNodePtr thread_node, struct thread *threa
 			thread[thread_id].type = atoi(key);
 			xmlFree(key);
 		} else if(!xmlStrcmp(cur_node->name, BAD_CAST"size")) {
-			key = xmlNodeGetContent(cur_node);
-			if((index = xmlStrchar(key, 'M')) != -1) {
-				strncpy(str, (char *)key, index);
-				thread[thread_id].size = atoll(str) * MB;
-			} else if((index = xmlStrchar(key, 'K')) != -1) {
-				strncpy(str, (char *)key, index);
-				thread[thread_id].size = atoll(str) * KB;
-			} else {
-				thread[thread_id].size = atoll((char *)key);
-			}
-			xmlFree(key);
+			thread[thread_id].size = to_bytes(cur_node);
 		} else if (!xmlStrcmp(cur_node->name, BAD_CAST"block_size")) {
-			key = xmlNodeGetContent(cur_node);
-			if((index = xmlStrchar(key, 'M')) != -1) {
-				strncpy(str, (char *)key, index);
-				thread[thread_id].block_size = atoll(str) * MB;
-			} else if((index = xmlStrchar(key, 'K')) != -1) {
-				strncpy(str, (char *)key, index);
-				thread[thread_id].block_size= atoll(str) * KB;
-			} else {
-				thread[thread_id].block_size = atoll((char *)key);
-			}
-			xmlFree(key);
+			thread[thread_id].block_size = to_bytes(cur_node);
 		} else {
 //			printf("wrong thread attributes xml format!\n");
 //			return false;
@@ -65,7 +67,7 @@ bool thread_attributes_get_from_xml(xmlNodePtr thread_node, struct thread *threa
 	return true;
 }
 
-bool cpu_attributes_get_from_xml(xmlNodePtr cpu_node, struct cpu *cpu, int cpu_id)
+static bool cpu_attributes_get_from_xml(xmlNodePtr cpu_node, struct cpu *cpu, int cpu_id)
 {
 	xmlNodePtr cur_node = cpu_node->children;
 	xmlChar		*key;
@@ -104,7 +106,7 @@ fail_format:
 	return false;
 }
 
-struct cpu_config *cpu_config_create_from_xml(xmlNodePtr cpu_node)
+static struct cpu_config *cpu_config_create_from_xml(xmlNodePtr cpu_node)
 {
 	struct cpu_config *con = (struct cpu_config *)malloc(sizeof(*con));
 	if(!con) {
@@ -162,7 +164,7 @@ fail_cpu:
 	return NULL;
 }
 
-struct gpu_config *gpu_config_create_from_xml(xmlNodePtr gpu_node)
+static struct gpu_config *gpu_config_create_from_xml(xmlNodePtr gpu_node)
 {
 	struct gpu_config *con = (struct gpu_config *)malloc(sizeof(*con));
 	if(!con) {
@@ -181,20 +183,11 @@ struct gpu_config *gpu_config_create_from_xml(xmlNodePtr gpu_node)
 			strcpy(con->name, (char *)key);
 			xmlFree(key);
 		} else if(!xmlStrcmp(cur_node->name, BAD_CAST"size")) {
+			con->size = to_bytes(cur_node);
+		} else if(!xmlStrcmp(cur_node->name, BAD_CAST"type")){
 			key = xmlNodeGetContent(cur_node);
-			if((index = xmlStrchar(key, 'M')) != -1) {
-				strncpy(str, (char *)key, index);
-				con->size = atoll(str) * MB;
-			} else if((index = xmlStrchar(key, 'K')) != -1) {
-				strncpy(str, (char *)key, index);
-				con->size = atoll(str) * KB;
-			} else {
-				con->size = atoll((char *)key);
-			}
+			con->type = atoi(key);
 			xmlFree(key);
-		} else {
-//			printf("gpu config xml format wrong!\n");
-//			goto fail_format;
 		}
 		cur_node = cur_node->next;
 	}
@@ -205,14 +198,10 @@ fail_format:
 	return NULL;
 }
 
-struct config *config_create_from_xml(char *xml)
+bool config_get_from_xml(char *xml, struct config* con)
 {
 	xmlDocPtr	doc;
 	xmlNodePtr	cur_node;
-
-	struct config *con = (struct config *)malloc(sizeof(*con));
-	if(!con)
-		return NULL;
 
 	doc = xmlParseFile(xml);
 	if(!doc) {
@@ -251,14 +240,102 @@ struct config *config_create_from_xml(char *xml)
 	}
 
 	xmlFreeDoc(doc);
-	return con;
+	return true;
 
 fail_type:
 	xmlFreeDoc(doc);
 
 fail_xml:
 	free(con);
+	return false;
+}
+
+static struct cpu_config *cpu_config_from_default()
+{
+	struct cpu_config *con = (struct cpu_config *)malloc(sizeof(*con));
+	if(!con) return NULL;
+	int cpu_id, thread_id;
+
+	strcpy(con->name, DEFAULT_CPU_NAME);
+	con->cores = DEFAULT_CPU_CORES;
+	con->loops = DEFAULT_LOOPS;
+	con->cpus = (struct cpu *)malloc(sizeof(struct cpu) * con->cores);
+	if(!con->cpus) {
+		printf("con->cpus allocate fail\n");
+		goto fail_cpus;
+	}
+
+	for(cpu_id = 0; cpu_id < con->cores; cpu_id++) {
+		con->cpus[cpu_id].threads_num = DEFALUT_THREADS_NUM_IN_CPU;
+		con->cpus[cpu_id].threads = (struct thread *)malloc(sizeof(struct thread) * con->cpus[cpu_id].threads_num);
+		if(!con->cpus[cpu_id].threads) {
+			printf("cpu %d: threads allocate fail\n", cpu_id);
+			goto fail_threads;
+		}
+		
+		for(thread_id = 0; thread_id < con->cpus[cpu_id].threads_num; thread_id++) {
+			con->cpus[cpu_id].threads[thread_id].type = DEFAULT_TEST_TYPE;	
+			con->cpus[cpu_id].threads[thread_id].size = DEFAULT_CPU_SIZE * MB;
+			con->cpus[cpu_id].threads[thread_id].block_size = DEFAULT_BLOCK_SIZE;
+		}
+	}
+
+	return con;
+	
+fail_threads:
+	do {
+		free(con->cpus[--cpu_id].threads);
+	}while(cpu_id);
+	free(con->cpus);
+	
+fail_cpus:
+	free(con);
 	return NULL;
+}
+
+static struct gpu_config *gpu_config_from_default()
+{
+	struct gpu_config *con = (struct gpu_config *)malloc(sizeof(*con));
+	if(!con) {
+		printf("gpu_config struct allocate fail\n");
+		return NULL;
+	}
+
+	strcpy(con->name, DEFAULT_GPU_NAME);
+	con->type = DEFAULT_TEST_TYPE;
+	con->size = DEFAULT_GPU_SIZE * MB;
+
+	return con;
+}
+
+bool config_get_from_default(enum device dev, struct config *con)
+{
+	switch(dev) {
+		case CPU:
+			con->cpu_con = cpu_config_from_default();
+			if(!con->cpu_con) return false;
+			break;
+
+		case GPU:
+			con->gpu_con = gpu_config_from_default();
+			if(!con->gpu_con) return false;
+			break;
+
+		case FPGA:
+			break;
+
+		default:
+			break;
+	}
+	return true;
+}
+
+struct config *config_create()
+{
+	struct config *con = (struct config *)malloc(sizeof(*con));
+	if(!con)
+		return NULL;
+	return con;
 }
 
 void config_destroy(struct config *con)
@@ -280,13 +357,12 @@ void config_destroy(struct config *con)
 
 		free(con);
 	}
-
-	
 }
 
-int main()
+int test()
 {
-	struct config *con = config_create_from_xml("configs.xml");
+	struct config *con = config_create();
+	config_get_from_xml("configs.xml", con);
 
 	if(con) {
 		if(con->cpu_con) {
@@ -301,7 +377,7 @@ int main()
 		}
 
 		if(con->gpu_con) {
-			printf("GPU name: %s, workload size: %lld\n", con->gpu_con->name, con->gpu_con->size);
+			printf("GPU name: %s, workload size: %lld, gpu test type: %d\n", con->gpu_con->name, con->gpu_con->size, con->gpu_con->type);
 		}
 	}
 

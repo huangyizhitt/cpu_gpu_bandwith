@@ -8,13 +8,8 @@
 
 #define VERSION	"1.0"
 
-#define DEFALUT_BLOCK_SIZE	4096
-#define DEFAULT_CPU_CORES	sysconf(_SC_NPROCESSORS_ONLN)
-#define DEFALUT_THREADS_NUM_IN_CPU	1
-#define DEFAULT_LOOPS 10
-#define DEFAULT_GPU_ARRAY_SIZE	10	
-
-int use_gpu;
+bool use_cpu;
+bool use_gpu;
 enum trans_status gpu_test_status;
 
 bool **thread_status;
@@ -24,16 +19,14 @@ pthread_barrier_t gpu_barrier;
 
 void bench_usage()
 {
-	printf("cpu and gpu memory benchmark v%s\n", VERSION);
-	printf("Usage: gcmb [options] array_size_in_MiB\n");
+	printf("cpu and gpu memory bandwidth benchmark v%s\n", VERSION);
+	printf("Usage: gcmb [-C -G or -f filename]\n");
 	printf("Options:\n");
-	printf("	-n: number of runs per test(default: %d)\n", DEFAULT_LOOPS);
-	printf("	-c: number of cpu core in test(default: %ld)\n", DEFAULT_CPU_CORES);
-	printf("	-t: number of thread in per cpu core(default: %d)\n", DEFALUT_THREADS_NUM_IN_CPU);
-	printf("	-b: block size in bytes(default: %d)\n", DEFALUT_BLOCK_SIZE);
-	printf("	-G: use gpu and gpu array size is default %dMB\n", DEFAULT_GPU_ARRAY_SIZE);
-	printf("	-g: use gpu and set gpu array size in MB\n");
-	printf("\nThe default is to run default config\n");
+	printf("	-C: use default CPU memory test(cores: %d, thread per core: %d, size: %dMB, block size: %d, loops: %d, test type: %d)\n", DEFAULT_CPU_CORES, 
+		DEFALUT_THREADS_NUM_IN_CPU, DEFAULT_CPU_SIZE, DEFAULT_BLOCK_SIZE, DEFAULT_LOOPS, DEFAULT_TEST_TYPE);
+	printf("	-G: use default GPU memory test(size: %d, test type: %d)\n", DEFAULT_GPU_SIZE, DEFAULT_TEST_TYPE);
+	printf("	-f: use configuration file XML format in memory tests(default: %s)\n", DEFAULT_CONFIGURATION_FILE);
+	printf("	-h:	usage help\n");
 }
 
 long *bench_generate_test_array(size_t size)
@@ -59,73 +52,56 @@ void bench_process_input(int argc, char **argv, struct config *con)
 {
 	int opt;
 	double size;
-	while((opt = getopt(argc, argv, "hGg:n:c:t:b:")) != EOF) {
+	if(argc < 2) {
+		printf("wrong usage, please ./gcmbw -h know how to use\n");
+		exit(1);
+	}
+	
+	while((opt = getopt(argc, argv, "hCGf:")) != EOF) {
 		switch(opt){
 			case 'h':
 				bench_usage();
 				exit(0);
 
+			case 'C':
+				use_cpu = true;
+				if(config_get_from_default(CPU, con) == false) {
+					printf("get CPU default config fail\n");
+					exit(1);
+				}
+				break;
+			
 			case 'G':
-				use_gpu = 1;
-				con->gpu_array_size = DEFAULT_GPU_ARRAY_SIZE * MB / sizeof(unsigned char);
-				break;
-
-			case 'g':
-				use_gpu = 1;
-				con->gpu_array_size = strtoul(optarg, (char **)NULL, 10) * MB / sizeof(unsigned char);
-				if(con->gpu_array_size < 0) {
-					printf("Error: gpu array size must >0\n");
+				use_gpu = true;
+				if(config_get_from_default(GPU, con) == false) {
+					printf("get GPU default config fail\n");
 					exit(1);
 				}
 				break;
 
-			case 'n':
-				con->loops = strtoul(optarg, (char **)NULL, 10);
-				if(con->loops <= 0) {
-					printf("Error: run test must >=1\n");
+			case 'F':
+				if(config_get_from_xml(optarg, con) == false) {
+					printf("get config from xml fail\n");
 					exit(1);
+				}
+				
+				if(con->cpu_con) {
+					use_cpu = true;
+				}
+						
+				if(con->gpu_con) {
+					use_gpu = true;
 				}
 				break;
-
-			case 'c':
-				con->cores = strtoul(optarg, (char **)NULL, 10);
-				if(con->cores < 0) {
-					printf("Error: core number must >=1\n");
-					exit(1);
-				}
-
-			case 't':
-				con->threads_per_core = strtoul(optarg, (char **)NULL, 10);
-				if(con->threads_per_core < 0) {
-					printf("Error: thread number must >=1\n");
-					exit(1);
-				}
-				break;
-
-			case 'b':
-				con->block_size = strtoul(optarg, (char **)NULL, 10);
-				if(con->block_size <= 0) {
-					printf("Error: memory block size must >=1\n");
-					exit(1);
-				}
-				break;
-
+				
 			default:
+				printf("wrong usage, please ./gcmbw -h know how to use\n");
 				break;
 		}
 	}
-
-	if(optind < argc) {
-        size = strtoul(argv[optind++], (char **)NULL, 10);
-    } else {
-        printf("Error: no array size given!\n");
-        exit(1);
-    }
-
-	con->size = size * MB / sizeof(long);
 }
 
-void bench_init(struct config *con)
+/*void bench_init(struct config *con)
 {
 	int cpu_it, thread_it; 
 	int threads = con->cores * con->threads_per_core;
@@ -156,24 +132,26 @@ void bench_deinit(struct config *con)
 	if(use_gpu) {
 		pthread_barrier_destroy(&gpu_barrier);
 	}
-}
-
-void bench_default_argument(struct config *con)
-{
-	con->loops = DEFAULT_LOOPS;
-	con->cores = DEFAULT_CPU_CORES;
-	con->threads_per_core = DEFALUT_THREADS_NUM_IN_CPU;
-	con->block_size = DEFALUT_BLOCK_SIZE;
-	use_gpu = 0;
-}
+}*/
 
 void bench_print_config(struct config *con)
 {
-	printf("Configuration information:\n");
-	printf("	Testing times: 				%d\n", con->loops);
-	printf("	Testing CPUs:  				%d\n", con->cores);
-	printf("	Testing threads per CPU:		%d\n", con->threads_per_core);
-	printf("	Testing memory block size:		%d\n", con->block_size);
+	if(con) {
+		if(con->cpu_con) {
+			printf("CPU name: %s, CPUs: %d, loops: %d\n", con->cpu_con->name, con->cpu_con->cores, con->cpu_con->loops);
+			for(int i = 0; i < con->cpu_con->cores; i++) {
+				printf("\tcpu %d, thread num: %d\n", i, con->cpu_con->cpus[i].threads_num);
+				for(int j = 0; j < con->cpu_con->cpus[i].threads_num; j++) {
+					printf("\tthread %d, workload type: %d, size: %lld, block_size: %lld\n", j, con->cpu_con->cpus[i].threads[j].type, \
+						con->cpu_con->cpus[i].threads[j].size, con->cpu_con->cpus[i].threads[j].block_size);
+				}
+			}
+		}
+
+		if(con->gpu_con) {
+			printf("GPU name: %s, workload size: %lld, gpu test type: %d\n", con->gpu_con->name, con->gpu_con->size, con->gpu_con->type);
+		}
+	}
 }
 
 void bench_print_out(int core, int thread, double time, double size)

@@ -38,6 +38,7 @@
 	</CPUbench>
 	<GPUbench>
 		<name>GTX 1080</name>
+		<type>0</type>
 		<size>100MB</size>
 	</GPUbench>
 </bench>
