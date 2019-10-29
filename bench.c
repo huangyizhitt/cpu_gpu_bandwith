@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <time.h>
+#include <sys/time.h>
 #include <pthread.h>
 #include "config.h"
 #include "bench.h"
@@ -24,8 +25,8 @@ void bench_usage()
 	printf("cpu and gpu memory bandwidth benchmark v%s\n", VERSION);
 	printf("Usage: gcmb [-C -G or -f filename]\n");
 	printf("Options:\n");
-	printf("	-C: use default CPU memory test(cores: %d, thread per core: %d, size: %dMB, block size: %d, loops: %d, test type: %d)\n", DEFAULT_CPU_CORES, 
-		DEFALUT_THREADS_NUM_IN_CPU, DEFAULT_CPU_SIZE, DEFAULT_BLOCK_SIZE, DEFAULT_LOOPS, DEFAULT_TEST_TYPE);
+	printf("	-C: use default CPU memory test(cores: %d, thread per core: %d, size: %dMB, align: %d, loops: %d, test type: %d)\n", DEFAULT_CPU_CORES, 
+		DEFALUT_THREADS_NUM_IN_CPU, DEFAULT_CPU_SIZE, DEFAULT_ALIGN, DEFAULT_LOOPS, DEFAULT_TEST_TYPE);
 	printf("	-G: use default GPU memory test(size: %d, test type: %d)\n", DEFAULT_GPU_SIZE, DEFAULT_TEST_TYPE);
 	printf("	-f: use configuration file XML format in memory tests(default: %s)\n", DEFAULT_CONFIGURATION_FILE);
 	printf("	-h:	usage help\n");
@@ -46,7 +47,7 @@ CPU_DATA_TYPE *bench_generate_test_array(size_t size, size_t align)
 {
 	size_t iter;
 
-	CPU_DATA_TYPE *arr = (CPU_DATA_TYPE *)aligned_alloc(align, size);
+	CPU_DATA_TYPE *arr = (CPU_DATA_TYPE *)aligned_alloc(align, size * sizeof(CPU_DATA_TYPE));
 
 	if(!arr) {
 		errno = ENOMEM;
@@ -55,7 +56,7 @@ CPU_DATA_TYPE *bench_generate_test_array(size_t size, size_t align)
 	}
 
 	for(iter = 0; iter < size / sizeof(CPU_DATA_TYPE); iter++) {
-		res[iter] = iter;
+		arr[iter] = iter;
 	}
 
 	return arr;
@@ -66,7 +67,7 @@ void bench_destroy_test_array(CPU_DATA_TYPE *arr)
 	if(arr) free(arr);
 }
 
-void bench_process_input(int argc, char **argv, struct config *con)
+void bench_process_input(int argc, char **argv, struct bench_config *con)
 {
 	int opt;
 	double size;
@@ -119,40 +120,37 @@ void bench_process_input(int argc, char **argv, struct config *con)
 	}
 }
 
-void bench_init(struct config *con)
+struct bench_config *bench_init(int argc, char **argv)
 {
-	int cpu_it, thread_it; 
-	int threads = con->cores * con->threads_per_core;
 	srand((unsigned)time(NULL));
 
-	gpu_test_status = INIT;
-	thread_status = (bool **) malloc(con->cores * sizeof(bool *));
-	for(cpu_it = 0; cpu_it < con->cores; cpu_it++) {
-		thread_status[cpu_it] = (bool *)malloc(con->threads_per_core * sizeof(bool));
-		for(thread_it = 0; thread_it < con->threads_per_core; thread_it++) {
-			thread_status[cpu_it][thread_it] = 0;
-		}
+	struct bench_config *con = config_create();
+	if(!con) {
+		printf("allocate struct bench_config fail\n");
+		exit(1);
 	}
+	bench_process_input(argc, argv, con);
+
+	if(use_gpu)
+		gpu_test_status = INIT;
 
 	if(use_gpu && use_cpu) {
-		pthread_barrier_init(&gpu_barrier, NULL, threads+1);
+		pthread_barrier_init(&gpu_barrier, NULL, con->cpu_con->total_threads+1);
 	}
+
+	return con;
 }
 
-void bench_deinit(struct config *con)
+void bench_deinit(struct bench_config *con)
 {
-	int cpu_it, thread_it; 
-	for(cpu_it = 0; cpu_it < con->cores; cpu_it++) {
-		free(thread_status[cpu_it]);
-	}
-	free(thread_status);
-
 	if(use_cpu && use_gpu) {
 		pthread_barrier_destroy(&gpu_barrier);
 	}
+
+	config_destroy(con);
 }
 
-void bench_print_config(struct config *con)
+void bench_print_config(struct bench_config *con)
 {
 	if(con) {
 		if(con->cpu_con) {
@@ -176,8 +174,9 @@ void bench_print_config(struct config *con)
 	}
 }
 
-void bench_print_out(int core, int thread, double time, double size)
+void bench_print_out(const char *name, int core, int thread, double time, double size)
 {
+	printf("[%s]\t", name);
 	printf("Core: %d\t", core);
 	printf("Thread: %d\t", thread);
 	printf("Elapsed: %.5f\t", time);

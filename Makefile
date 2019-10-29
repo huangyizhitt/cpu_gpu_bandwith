@@ -2,7 +2,7 @@
 
 CC = gcc
 NVCC = nvcc
-CFLAGS = -O2 -std=gnu99
+CFLAGS = -O2 -g -std=gnu11
 RM = rm -rf
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)

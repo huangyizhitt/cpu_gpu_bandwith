@@ -121,6 +121,8 @@ static struct cpu_config *cpu_config_create_from_xml(xmlNodePtr cpu_node)
 	int i = 0;
 	xmlChar		*key;
 	xmlNodePtr cur_node = cpu_node->children;
+
+	con->total_threads = 0;
 	while(cur_node != NULL) {
 		if(!xmlStrcmp(cur_node->name, BAD_CAST"name")) {
 			key = xmlNodeGetContent(cur_node);
@@ -149,7 +151,7 @@ static struct cpu_config *cpu_config_create_from_xml(xmlNodePtr cpu_node)
 				printf("cpu attributes get from xml fail!\n");
 				goto fail_format;
 			}
-			
+			con->total_threads += con->cpus[i].threads_num;
 			i++;
 		} else {
 //			printf("wrong xml format!\n");
@@ -210,7 +212,7 @@ fail_format:
 	return NULL;
 }
 
-bool config_get_from_xml(char *xml, struct config* con)
+bool config_get_from_xml(char *xml, struct bench_config* con)
 {
 	xmlDocPtr	doc;
 	xmlNodePtr	cur_node;
@@ -277,9 +279,11 @@ static struct cpu_config *cpu_config_from_default()
 		printf("con->cpus allocate fail\n");
 		goto fail_cpus;
 	}
+	con->total_threads = 0;
 
 	for(cpu_id = 0; cpu_id < con->cores; cpu_id++) {
 		con->cpus[cpu_id].threads_num = DEFALUT_THREADS_NUM_IN_CPU;
+		con->total_threads += con->cpus[cpu_id].threads_num;
 		con->cpus[cpu_id].threads = (struct thread *)malloc(sizeof(struct thread) * con->cpus[cpu_id].threads_num);
 		if(!con->cpus[cpu_id].threads) {
 			printf("cpu %d: threads allocate fail\n", cpu_id);
@@ -325,7 +329,7 @@ static struct gpu_config *gpu_config_from_default()
 	return con;
 }
 
-bool config_get_from_default(enum device dev, struct config *con)
+bool config_get_from_default(enum device dev, struct bench_config *con)
 {
 	switch(dev) {
 		case CPU:
@@ -347,15 +351,15 @@ bool config_get_from_default(enum device dev, struct config *con)
 	return true;
 }
 
-struct config *config_create()
+struct bench_config *config_create()
 {
-	struct config *con = (struct config *)malloc(sizeof(*con));
+	struct bench_config *con = (struct bench_config *)malloc(sizeof(*con));
 	if(!con)
 		return NULL;
 	return con;
 }
 
-void config_destroy(struct config *con)
+void config_destroy(struct bench_config *con)
 {
 	if(con) {
 		if(con->cpu_con) {
@@ -378,7 +382,7 @@ void config_destroy(struct config *con)
 
 int test()
 {
-	struct config *con = config_create();
+	struct bench_config *con = config_create();
 	config_get_from_xml("configs.xml", con);
 
 	if(con) {

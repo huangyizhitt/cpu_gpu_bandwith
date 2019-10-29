@@ -45,7 +45,7 @@ pthread_barrier_t barrier;				//barrier of memory bandwith test for threads
 #define TEST_SCALE(d, s, size, scalar)						\
 {															\
 	for(size_t i = 0; i < size; i++) {						\
-		d[i] = scalar * s[i]								\	
+		d[i] = scalar * s[i];								\	
 	}														\
 }
 
@@ -56,10 +56,10 @@ pthread_barrier_t barrier;				//barrier of memory bandwith test for threads
 	}														\
 }
 
-#define TEST_Triad(c, a, b, size, scalar)					\
+#define TEST_TRIAD(c, a, b, size, scalar)					\
 {															\
 	for(size_t i = 0; i < size; i++) {						\
-		c[i] = a[i] + scalar * b[i]							\
+		c[i] = a[i] + scalar * b[i];							\
 	}														\
 }
 
@@ -68,12 +68,12 @@ static inline void test_memcpy(char *d, char *s, size_t bytes, int block_size)
 	
 }
 
-static void test_memcpy_loops(char *d, char *s, size_t bytes, int block_size, int loops)
+/*static void test_memcpy_loops(char *d, char *s, size_t bytes, int block_size, int loops)
 {
 	while(loops--) {
 		TEST_MEMCPY(d, s, bytes, block_size);
 	}
-}
+}*/
 
 static void test_sequence_write(long *array, size_t bytes, int loops)
 {
@@ -89,34 +89,36 @@ static void test_sequence_write(long *array, size_t bytes, int loops)
 	}
 }
 
-static inline CPU_DATA_TYPE get_limit_value()
+static inline int get_limit_value()
 {
+	int limit;
 	if(__builtin_types_compatible_p(typeof(CPU_DATA_TYPE), typeof(char))) {
-		return SCHAR_MAX;
+		limit = 7;
 	} else if(__builtin_types_compatible_p(typeof(CPU_DATA_TYPE), typeof(unsigned char))) {
-		return UCHAR_MAX;
+		limit = 15;
 	} else if(__builtin_types_compatible_p(typeof(CPU_DATA_TYPE), typeof(short))) {
-		return SHRT_MAX;
+		limit = 127;
 	} else if(__builtin_types_compatible_p(typeof(CPU_DATA_TYPE), typeof(unsigned short))) {
-		return USHRT_MAX;
+		limit = 255;
 	} else if(__builtin_types_compatible_p(typeof(CPU_DATA_TYPE), typeof(int))) {
-		return INT_MAX;
+		limit = 2e15-1;
 	} else if(__builtin_types_compatible_p(typeof(CPU_DATA_TYPE), typeof(unsigned int))) {
-		return UINT_MAX;
+		limit = 2e16-1;
 	} else if(__builtin_types_compatible_p(typeof(CPU_DATA_TYPE), typeof(long))) {
-		return LONG_MAX;
+		limit = 2e15-1;
 	} else if(__builtin_types_compatible_p(typeof(CPU_DATA_TYPE), typeof(unsigned long))) {
-		return ULONG_MAX;
+		limit = 2e16-1;
 	} else if(__builtin_types_compatible_p(typeof(CPU_DATA_TYPE), typeof(long long))) {
-		return LLONG_MAX;
+		limit = 2e15-1;
 	} else {
-		return ULLONG_MAX;
+		limit = 2e16-1;
 	}
+	return limit;
 }
 
 static void *cpu_co_gpu_worker(void *arg)
 {
-	struct timeval start, stop;
+/*	struct timeval start, stop;
 	struct cpu_bench_arg *data = (struct cpu_bench_arg*)arg;
 	unsigned long long bytes = data->size * sizeof(long);
 	int block_size = data->block_size;
@@ -177,7 +179,7 @@ out:
 fail_b:
 	free(a);
 fail_a:
-	pthread_exit((void *)1);
+	pthread_exit((void *)1);*/
 
 }
 
@@ -187,11 +189,11 @@ void cpu_bench_copy(struct thread *thread)
 	size_t size = thread->size / sizeof(CPU_DATA_TYPE);
 	int align = thread->align;
 	int loops = thread->loops;
+	const char *name = "CPU Memcpy";
 
 	CPU_DATA_TYPE *dst = bench_generate_test_array(size, align);
 	CPU_DATA_TYPE *src = bench_generate_test_array(size, align);
-	CPU_DATA_TYPE limit = get_limit_value();
-	if(limit > INT_MAX)	limit = INT_MAX;
+	int limit = get_limit_value();
 	
 	if(thread->use_cache) {		
 		for(size_t i = 0; i < size; i++) {
@@ -203,7 +205,7 @@ void cpu_bench_copy(struct thread *thread)
 		for(int i = 0; i < loops; i++) {
 			TEST_MEMCPY(dst, src, size);
 		}
-		elapse += (bench_second() - t) * 1.0e6;
+		elapse += (bench_second() - t);
 	} else {
 		for(int i = 0; i < loops; i++) {
 			for(size_t i = 0; i < size; i++) {
@@ -213,15 +215,14 @@ void cpu_bench_copy(struct thread *thread)
 			pthread_barrier_wait(&barrier);	
 			t = bench_second();
 			TEST_MEMCPY(dst, src, size);
-			elapse += (bench_second() - t) * 1.0e6;
+			elapse += (bench_second() - t);
 		}
 	}
 
 	elapse /= loops;
-	bench_print_out(thread->cpu_id, thread->thread_id, elapse, (double)thread->size / MB);
-	bench_destroy_test_array();
-
-	return elapse;
+	bench_print_out(name, thread->cpu_id, thread->thread_id, elapse, (double)thread->size / MB);
+	bench_destroy_test_array(dst);
+	bench_destroy_test_array(src);
 }
 
 void cpu_bench_sequence_write(struct thread *thread)
@@ -230,10 +231,10 @@ void cpu_bench_sequence_write(struct thread *thread)
 	size_t size = thread->size / sizeof(CPU_DATA_TYPE);
 	int align = thread->align;
 	int loops = thread->loops;
+	const char *name = "CPU Sequence Write";
 
 	CPU_DATA_TYPE *arr = bench_generate_test_array(size, align);
-	CPU_DATA_TYPE limit = get_limit_value();
-	if(limit > INT_MAX)	limit = INT_MAX;
+	int limit = get_limit_value();
 
 	if(thread->use_cache) {
 		CPU_DATA_TYPE value = rand() % limit;
@@ -243,26 +244,162 @@ void cpu_bench_sequence_write(struct thread *thread)
 		for(int i = 0; i < loops; i++) {
 			TEST_SEQUENCE_WRITE(arr, size, value);
 		}
-		elapse += (bench_second() - t) * 1.0e6;
+		elapse += (bench_second() - t);
 	} else {
 		pthread_barrier_wait(&barrier);	
 		for(int i = 0; i < loops; i++) {
 			TEST_SEQUENCE_WRITE(arr, size, rand() % limit);
 		}
-		elapse += (bench_second() - t) * 1.0e6;
+		elapse += (bench_second() - t);
 	}
 
 	elapse /= loops;
-	bench_print_out(thread->cpu_id, thread->thread_id, elapse, (double)thread->size / MB);
-	bench_destroy_test_array();
+	bench_print_out(name, thread->cpu_id, thread->thread_id, elapse, (double)thread->size / MB);
+	bench_destroy_test_array(arr);
 }
 
-void 
+void cpu_bench_scale(struct thread *thread)
+{
+	double elapse = 0, t;
+	size_t size = thread->size / sizeof(CPU_DATA_TYPE);
+	int align = thread->align;
+	int loops = thread->loops;
+	int limit = get_limit_value();
+	const char *name = "CPU Scale";
+	
+	CPU_DATA_TYPE *d = bench_generate_test_array(size, align);
+	CPU_DATA_TYPE *s = bench_generate_test_array(size, align);
+
+	if(thread->use_cache) {
+		CPU_DATA_TYPE scalar = rand() % limit;							//may be will cut off result
+		pthread_barrier_wait(&barrier);
+
+		t = bench_second();
+		for(int i = 0; i < loops; i++) {
+			TEST_SCALE(d, s, size, scalar);
+		}
+		elapse += (bench_second() - t);
+	} else {
+		pthread_barrier_wait(&barrier);
+
+		t = bench_second();
+		for(int i = 0; i < loops; i++) {
+			TEST_SCALE(d, s, size, rand() % limit);
+		}
+		elapse += (bench_second() - t);
+	}
+
+	elapse /= loops;
+	bench_print_out(name, thread->cpu_id, thread->thread_id, elapse, (double)thread->size / MB);
+	bench_destroy_test_array(d);	
+	bench_destroy_test_array(s);
+}
+
+void cpu_bench_add(struct thread *thread)
+{
+	double elapse = 0, t;
+	size_t size = thread->size / sizeof(CPU_DATA_TYPE);
+	int align = thread->align;
+	int loops = thread->loops;
+	int limit = get_limit_value();
+	const char *name = "CPU Add";
+
+	CPU_DATA_TYPE *a = bench_generate_test_array(size, align);
+	CPU_DATA_TYPE *b = bench_generate_test_array(size, align);
+	CPU_DATA_TYPE *c = bench_generate_test_array(size, align);
+
+	if(thread->use_cache) {
+		for(size_t i = 0; i < size; i++) {
+			a[i] = rand() % limit;
+			b[i] = rand() % limit;
+		}
+	
+		pthread_barrier_wait(&barrier);
+		t = bench_second();
+		for(int i = 0; i < loops; i++) {
+			TEST_ADD(c, a, b, size);
+		}
+		elapse += (bench_second() - t);
+	} else {
+		for(int i = 0; i < loops; i++) {
+			for(size_t i = 0; i < size; i++) {
+				a[i] = rand() % limit;
+				b[i] = rand() % limit;
+			}
+
+			pthread_barrier_wait(&barrier);
+			t = bench_second();
+			TEST_ADD(c, a, b, size);
+			elapse += (bench_second() - t);
+		}
+	}
+
+	elapse /= loops;
+	bench_print_out(name, thread->cpu_id, thread->thread_id, elapse, (double)thread->size / MB);
+	bench_destroy_test_array(a);	
+	bench_destroy_test_array(b);
+	bench_destroy_test_array(c);
+}
+
+void cpu_bench_triad(struct thread *thread)
+{
+	double elapse = 0, t;
+	size_t size = thread->size / sizeof(CPU_DATA_TYPE);
+	int align = thread->align;
+	int loops = thread->loops;
+	int limit = get_limit_value();
+	const char *name = "CPU Triad";
+
+	CPU_DATA_TYPE *a = bench_generate_test_array(size, align);
+	CPU_DATA_TYPE *b = bench_generate_test_array(size, align);
+	CPU_DATA_TYPE *c = bench_generate_test_array(size, align);
+	CPU_DATA_TYPE scalar = rand() % limit;
+
+	if(thread->use_cache) {
+		for(size_t i = 0; i < size; i++) {
+			a[i] = rand() % limit;
+			b[i] = rand() % limit;
+		}
+
+		pthread_barrier_wait(&barrier);
+		t = bench_second();
+		for(int i = 0; i < loops; i++) {
+			TEST_TRIAD(c, a, b, size, scalar);
+		}
+		elapse += (bench_second() - t);
+	} else {
+		for(int i = 0; i < loops; i++) {
+			for(size_t i = 0; i < size; i++) {
+				a[i] = rand() % limit;
+				b[i] = rand() % limit;
+			}
+
+			pthread_barrier_wait(&barrier);
+			t = bench_second();
+			TEST_TRIAD(c, a, b, size, scalar);
+			elapse += (bench_second() - t);
+		}
+	}
+
+	bench_print_out(name, thread->cpu_id, thread->thread_id, elapse, (double)thread->size / MB);
+	bench_destroy_test_array(a);	
+	bench_destroy_test_array(b);
+	bench_destroy_test_array(c);
+}
+
+void cpu_bench_all(struct thread *thread)
+{
+	cpu_bench_copy(thread);
+	cpu_bench_sequence_write(thread);
+	cpu_bench_scale(thread);
+	cpu_bench_add(thread);
+	cpu_bench_triad(thread);
+}
 
 static void *cpu_bench_worker(void *arg)
 {
 	double elapse = 0;
-	struct thread *thread = (struct cpu_bench_arg*)arg;
+	struct thread *thread = (struct thread*)arg;
 
 	switch(thread->type) {
 		case ALL:
@@ -291,9 +428,10 @@ static void *cpu_bench_worker(void *arg)
 	pthread_exit((void *)0);
 }
 
-bool cpu_bench_init(struct config *con)
+bool cpu_bench_init(struct bench_config *con)
 {
 	int cpu_id, thread_id, i, j;
+	int threads = con->cpu_con->total_threads;
 
 	pthread_barrier_init(&barrier, NULL, threads);
 	
@@ -317,7 +455,7 @@ bool cpu_bench_init(struct config *con)
 			}
 
 			if(pthread_create(&con->cpu_con->cpus[cpu_id].threads[thread_id].tid, NULL, con->cpu_con->cpus[cpu_id].threads[thread_id].thread_func, (void *)&con->cpu_con->cpus[cpu_id].threads[thread_id])) {
-					printf("Fail pthread create, thread num is c:%dt:%d\n", cpu_it, thread_it);
+					printf("Fail pthread create, thread num is c:%dt:%d\n", cpu_id, thread_id);
 					goto fail_pthread_create;
 			}
 
@@ -341,10 +479,22 @@ fail_pthread_create:
 	return false;
 }
 
-void cpu_bench_deinit(struct config *con)
+void cpu_bench_finish(struct bench_config *con)
+{
+	struct cpu_config *cpu_config = con->cpu_con;
+	int cpu_id, thread_id;
+
+	for(cpu_id = 0; cpu_id < cpu_config->cores; cpu_id++) {
+		for(thread_id = 0; thread_id < cpu_config->cpus[cpu_id].threads_num; thread_id++) {
+			pthread_join(cpu_config->cpus[cpu_id].threads[thread_id].tid, NULL);
+		}
+	}
+}
+
+void cpu_bench_deinit(struct bench_config *con)
 {
 	for(int cpu_id = 0; cpu_id < con->cpu_con->cores; cpu_id++) {
-		for(int thread_id = 0; j < con->cpu_con->cpus[cpu_id].threads_num; thread_id++) {
+		for(int thread_id = 0; thread_id < con->cpu_con->cpus[cpu_id].threads_num; thread_id++) {
 			pthread_attr_destroy(&con->cpu_con->cpus[cpu_id].threads[thread_id].attr);
 		}
 	}

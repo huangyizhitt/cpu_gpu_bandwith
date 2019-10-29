@@ -33,9 +33,12 @@
 
 int main(int argc, char **argv)
 {
-	struct config *con = config_create();
-	bench_process_input(argc, argv, con);
+	struct bench_config *con = bench_init(argc, argv);
 	bench_print_config(con);
-	config_destroy(con);
+
+	cpu_bench_init(con);
+	cpu_bench_finish(con);
+	cpu_bench_deinit(con);
+	bench_deinit(con);
 	return 0;
 }
