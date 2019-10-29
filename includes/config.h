@@ -18,7 +18,7 @@ extern bool use_cpu;
 #define DEFAULT_TEST_TYPE					ALL
 #define DEFAULT_CPU_DATA_TYPE				long
 #define DEFAULT_GPU_DATA_TYPE				long
-#define DEFAULT_USE_CACHE					false
+#define DEFAULT_USE_CACHE					true
 
 #ifndef CPU_DATA_TYPE
 #define CPU_DATA_TYPE						DEFAULT_CPU_DATA_TYPE

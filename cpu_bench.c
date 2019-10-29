@@ -247,6 +247,7 @@ void cpu_bench_sequence_write(struct thread *thread)
 		elapse += (bench_second() - t);
 	} else {
 		pthread_barrier_wait(&barrier);	
+		t = bench_second();
 		for(int i = 0; i < loops; i++) {
 			TEST_SEQUENCE_WRITE(arr, size, rand() % limit);
 		}
