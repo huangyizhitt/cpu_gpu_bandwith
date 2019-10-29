@@ -26,8 +26,9 @@ extern bool **thread_status;
 extern pthread_barrier_t gpu_barrier;
 enum trans_status gpu_test_status;
 
-	
-long *bench_generate_test_array(size_t size);
+double bench_second();	
+CPU_DATA_TYPE *bench_generate_test_array(size_t size, size_t align);
+void bench_destroy_test_array(CPU_DATA_TYPE *arr);
 void bench_process_input(int argc, char **argv, struct config *con);
 void bench_init(struct config *con);
 void bench_deinit(struct config *con);

@@ -54,16 +54,21 @@ static bool thread_attributes_get_from_xml(xmlNodePtr thread_node, struct thread
 			xmlFree(key);
 		} else if(!xmlStrcmp(cur_node->name, BAD_CAST"size")) {
 			thread[thread_id].size = to_bytes(cur_node);
-		} else if (!xmlStrcmp(cur_node->name, BAD_CAST"block_size")) {
-			thread[thread_id].block_size = to_bytes(cur_node);
+		} else if (!xmlStrcmp(cur_node->name, BAD_CAST"align")) {
+			thread[thread_id].align = to_bytes(cur_node);
+		} else if(!xmlStrchar(cur_node->name, BAD_CAST"cache")) {
+			key = xmlNodeGetContent(cur_node);
+			thread[thread_id].use_cache = atoi(key);
+			xmlFree(key);
 		} else {
 //			printf("wrong thread attributes xml format!\n");
 //			return false;
 		}
-
+		
 		cur_node = cur_node->next;
 	}
-
+	
+	thread[thread_id].bytes_per_element = sizeof(CPU_DATA_TYPE);
 	return true;
 }
 
@@ -188,10 +193,17 @@ static struct gpu_config *gpu_config_create_from_xml(xmlNodePtr gpu_node)
 			key = xmlNodeGetContent(cur_node);
 			con->type = atoi(key);
 			xmlFree(key);
+		} else if(!xmlStrchar(cur_node->name, BAD_CAST"cache")) {
+			key = xmlNodeGetContent(cur_node);
+			con->use_cache = atoi(key);
+			xmlFree(key);
+		} else {
+			
 		}
 		cur_node = cur_node->next;
 	}
 
+	con->bytes_per_element = sizeof(GPU_DATA_TYPE);
 	return con;
 fail_format:
 	free(con);
@@ -202,7 +214,8 @@ bool config_get_from_xml(char *xml, struct config* con)
 {
 	xmlDocPtr	doc;
 	xmlNodePtr	cur_node;
-
+	xmlChar		*key;
+	
 	doc = xmlParseFile(xml);
 	if(!doc) {
 		printf("xml file open fail\n");
@@ -228,7 +241,7 @@ bool config_get_from_xml(char *xml, struct config* con)
 			con->cpu_con = cpu_config_create_from_xml(cur_node);
 		} else if(!xmlStrcmp(cur_node->name, BAD_CAST"GPUbench")) {
 			con->gpu_con = gpu_config_create_from_xml(cur_node);
-		} else {
+		}  else {
 
 		}
 		cur_node = cur_node->next;
@@ -276,7 +289,9 @@ static struct cpu_config *cpu_config_from_default()
 		for(thread_id = 0; thread_id < con->cpus[cpu_id].threads_num; thread_id++) {
 			con->cpus[cpu_id].threads[thread_id].type = DEFAULT_TEST_TYPE;	
 			con->cpus[cpu_id].threads[thread_id].size = DEFAULT_CPU_SIZE * MB;
-			con->cpus[cpu_id].threads[thread_id].block_size = DEFAULT_BLOCK_SIZE;
+			con->cpus[cpu_id].threads[thread_id].align = DEFAULT_ALIGN;
+			con->cpus[cpu_id].threads[thread_id].bytes_per_element = sizeof(CPU_DATA_TYPE);
+			con->cpus[cpu_id].threads[thread_id].use_cache = DEFAULT_USE_CACHE;
 		}
 	}
 
@@ -304,7 +319,9 @@ static struct gpu_config *gpu_config_from_default()
 	strcpy(con->name, DEFAULT_GPU_NAME);
 	con->type = DEFAULT_TEST_TYPE;
 	con->size = DEFAULT_GPU_SIZE * MB;
-
+	con->bytes_per_element = sizeof(GPU_DATA_TYPE);
+	con->use_cache = DEFAULT_USE_CACHE;
+	
 	return con;
 }
 
@@ -370,8 +387,8 @@ int test()
 			for(int i = 0; i < con->cpu_con->cores; i++) {
 				printf("\tcpu %d, thread num: %d\n", i, con->cpu_con->cpus[i].threads_num);
 				for(int j = 0; j < con->cpu_con->cpus[i].threads_num; j++) {
-					printf("\tthread %d, workload type: %d, size: %lld, block_size: %lld\n", j, con->cpu_con->cpus[i].threads[j].type, \
-						con->cpu_con->cpus[i].threads[j].size, con->cpu_con->cpus[i].threads[j].block_size);
+					printf("\tthread %d, workload type: %d, size: %lld, memory align: %lld\n", j, con->cpu_con->cpus[i].threads[j].type, \
+						con->cpu_con->cpus[i].threads[j].size, con->cpu_con->cpus[i].threads[j].align);
 				}
 			}
 		}

@@ -8,7 +8,8 @@
 			<thread>
 				<type>0</type>
 				<size>1MB</size>
-				<block_size>4096</block_size>
+				<align>4096</align>
+				<cache>1</cache>
 			</thread>
 		</CPU>
 		<CPU>
@@ -16,7 +17,8 @@
 			<thread>
 				<type>0</type>
 				<size>1MB</size>
-				<block_size>4096</block_size>
+				<align>4096</align>
+				<cache>1</cache>
 			</thread>
 		</CPU>
 		<CPU>
@@ -24,7 +26,8 @@
 			<thread>
 				<type>0</type>
 				<size>1MB</size>
-				<block_size>4096</block_size>
+				<align>4096</align>
+				<cache>1</cache>
 			</thread>
 		</CPU>
 		<CPU>
@@ -32,7 +35,8 @@
 			<thread>
 				<type>0</type>
 				<size>1MB</size>
-				<block_size>4096</block_size>
+				<align>4096</align>
+				<cache>1</cache>
 			</thread>
 		</CPU>
 	</CPUbench>
@@ -40,5 +44,6 @@
 		<name>GTX 1080</name>
 		<type>0</type>
 		<size>100MB</size>
+		<cache>1</cache>
 	</GPUbench>
 </bench>

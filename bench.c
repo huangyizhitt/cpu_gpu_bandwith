@@ -17,7 +17,7 @@ enum trans_status gpu_test_status;
 bool **thread_status;
 pthread_barrier_t gpu_barrier;
 
-static char *label[8] = {"All(Memcpy, SequentialWrite, RandomWrite, Scale, Add, Triad)", "Memcpy", "SequentialWrite", "RandomWrite", "Scale", "Add", "Triad", "Unknown"};
+static char *label[8] = {"All(Memcpy, SequentialWrite, Scale, Add, Triad)", "Memcpy", "SequentialWrite", "Scale", "Add", "Triad", "Unknown"};
 
 void bench_usage()
 {
@@ -31,23 +31,39 @@ void bench_usage()
 	printf("	-h:	usage help\n");
 }
 
-long *bench_generate_test_array(size_t size)
+double bench_second()
+{
+	struct timeval tp;
+	struct timezone tzp;
+	int i;
+
+	i = gettimeofday(&tp,&tzp);
+	return ( (double) tp.tv_sec + (double) tp.tv_usec * 1.0e-6 );
+}
+
+
+CPU_DATA_TYPE *bench_generate_test_array(size_t size, size_t align)
 {
 	size_t iter;
 
-	long *res = calloc(size, sizeof(long));
+	CPU_DATA_TYPE *arr = (CPU_DATA_TYPE *)aligned_alloc(align, size);
 
-	if(!res) {
+	if(!arr) {
 		errno = ENOMEM;
 		perror("Fali to allocate memory!\n");
 		exit(1);
 	}
 
-	for(iter = 0; iter < size; iter++) {
-		res[iter] = LONG_MAX;
+	for(iter = 0; iter < size / sizeof(CPU_DATA_TYPE); iter++) {
+		res[iter] = iter;
 	}
 
-	return res;
+	return arr;
+}
+
+void bench_destroy_test_array(CPU_DATA_TYPE *arr)
+{
+	if(arr) free(arr);
 }
 
 void bench_process_input(int argc, char **argv, struct config *con)
@@ -118,7 +134,7 @@ void bench_init(struct config *con)
 		}
 	}
 
-	if(use_gpu & use_cpu) {
+	if(use_gpu && use_cpu) {
 		pthread_barrier_init(&gpu_barrier, NULL, threads+1);
 	}
 }
@@ -131,7 +147,7 @@ void bench_deinit(struct config *con)
 	}
 	free(thread_status);
 
-	if(use_gpu) {
+	if(use_cpu && use_gpu) {
 		pthread_barrier_destroy(&gpu_barrier);
 	}
 }
@@ -144,14 +160,18 @@ void bench_print_config(struct config *con)
 			for(int i = 0; i < con->cpu_con->cores; i++) {
 				printf("\tcpu %d, thread num: %d\n", i, con->cpu_con->cpus[i].threads_num);
 				for(int j = 0; j < con->cpu_con->cpus[i].threads_num; j++) {
-					printf("\tthread %d, workload size: %.3fMB, block_size: %lld, type: %s\n", j, (double)con->cpu_con->cpus[i].threads[j].size/MB,	\
-						 con->cpu_con->cpus[i].threads[j].block_size, label[con->cpu_con->cpus[i].threads[j].type]);
+					printf("\tthread %d, workload size: %.3fMB, memory align: %lld, test type: %s, uses %d bytes per array element, use cache: %d\n", j, 
+						(double)con->cpu_con->cpus[i].threads[j].size/MB,
+						 con->cpu_con->cpus[i].threads[j].align, label[con->cpu_con->cpus[i].threads[j].type], 
+						 con->cpu_con->cpus[i].threads[j].bytes_per_element, con->cpu_con->cpus[i].threads[j].use_cache);
 				}
 			}
 		}
 
 		if(con->gpu_con) {
-			printf("GPU name: %s, workload size: %.3fMB, gpu test type: %s\n", con->gpu_con->name, (double)con->gpu_con->size/MB, label[con->gpu_con->type]);
+			printf("GPU name: %s, workload size: %.3fMB, gpu test type: %s, uses %d bytes per array element, use cache: %d\n", 
+				con->gpu_con->name, (double)con->gpu_con->size/MB, label[con->gpu_con->type], 
+				con->gpu_con->bytes_per_element, con->gpu_con->use_cache);
 		}
 	}
 }
