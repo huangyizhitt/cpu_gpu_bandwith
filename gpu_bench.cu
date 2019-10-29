@@ -108,15 +108,16 @@ float test_device_access(unsigned char *array, unsigned int size)
 	return bandwidth;
 }
 
-extern "C"
-void gpu_bench(struct config *con)
+
+void *gpu_bench(void *arg)
 {
-	unsigned int bytes = con->gpu_array_size * sizeof(unsigned char); 
+	struct bench_config *con = (struct bench_config *)arg;
+	unsigned int bytes = con->gpu_con->size * sizeof(unsigned char); 
 	float bandwidth;
 	gpu_test_status = INIT;
 	pthread_barrier_wait(&gpu_barrier);
-	unsigned char *array = gpu_array_make_uma(con->gpu_array_size * sizeof(unsigned char));
-	bandwidth = test_host_to_device_uma(array, bytes, con->loops);
+	unsigned char *array = gpu_array_make_uma(con->gpu_con->size * sizeof(unsigned char));
+	bandwidth = test_host_to_device_uma(array, bytes, con->cpu_con->loops);
 	printf("Host to device: %.3f MiB/s\n", bandwidth);
 
 	bandwidth = test_device_access(array, bytes);
@@ -125,6 +126,18 @@ void gpu_bench(struct config *con)
 	gpu_array_destroy(array);
 	gpu_test_status = COMPLETE;
 	pthread_barrier_wait(&gpu_barrier);
+	return NULL;
 }
 
+extern "C"
+bool gpu_bench_init(struct bench_config *con)
+{
+	pthread_create(&con->gpu_con->tid, NULL, gpu_bench, con);
+	return true;
+}
 
+extern "C"
+void gpu_bench_finish(struct bench_config *con)
+{
+	pthread_join(con->gpu_con->tid, NULL);
+}

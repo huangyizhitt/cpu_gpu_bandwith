@@ -9,6 +9,10 @@
 #define TRUE	1
 #define FALSE	0
 
+#define likely(x)       __builtin_expect(!!(x),1)
+#define unlikely(x)     __builtin_expect(!!(x),0)
+
+
 enum trans_status {
 	INIT=0,								//init status		
 	HOST_TO_DEVICE,						//CPU->GPU by memory

@@ -45,7 +45,7 @@ pthread_barrier_t barrier;				//barrier of memory bandwith test for threads
 #define TEST_SCALE(d, s, size, scalar)						\
 {															\
 	for(size_t i = 0; i < size; i++) {						\
-		d[i] = scalar * s[i];								\	
+		d[i] = scalar * s[i];								\
 	}														\
 }
 
@@ -59,7 +59,7 @@ pthread_barrier_t barrier;				//barrier of memory bandwith test for threads
 #define TEST_TRIAD(c, a, b, size, scalar)					\
 {															\
 	for(size_t i = 0; i < size; i++) {						\
-		c[i] = a[i] + scalar * b[i];							\
+		c[i] = a[i] + scalar * b[i];						\
 	}														\
 }
 
@@ -116,71 +116,58 @@ static inline int get_limit_value()
 	return limit;
 }
 
-static void *cpu_co_gpu_worker(void *arg)
+static void *cpu_benckend_worker(void *arg)
 {
-/*	struct timeval start, stop;
-	struct cpu_bench_arg *data = (struct cpu_bench_arg*)arg;
-	unsigned long long bytes = data->size * sizeof(long);
-	int block_size = data->block_size;
-	unsigned long long total_bytes = 0;
-	double elapse;
-	enum trans_status status;
-	char *src, *dst;							
-	size_t  remain;	
-
-	long *a = bench_generate_test_array(data->size);
-	if(!a) {
-		printf("Fail to generate test array a\n");
-		goto fail_a;
-	}
+	struct thread *thread = (struct thread*)arg;
+	double elapse = 0, t;
+	int type_size = sizeof(CPU_DATA_TYPE);
+	size_t size = thread->size / type_size;
 	
-	long *b = bench_generate_test_array(data->size);
-	if(!b) {
-		printf("Fail to generate test array b\n");
-		goto fail_b;
-	}
+	int align = thread->align;
+	int loops = thread->loops;
+	const char *name = "CPU co GPU";
+	enum trans_status status;
+	CPU_DATA_TYPE *a = bench_generate_test_array(size, align);
+//	CPU_DATA_TYPE *b = bench_generate_test_array(size, align);
+	CPU_DATA_TYPE limit = get_limit_value();
+	size_t i = 0, total = 0;
 
 	status = gpu_test_status;
 	pthread_barrier_wait(&gpu_barrier);
 
 retry:
-	gettimeofday(&start, NULL);
-	while(1) {							
-		src = (char *)a;										
-		dst = (char *)b;										
-		for(remain = bytes; remain >= block_size; remain -= block_size, src += block_size) {
-			if(status != gpu_test_status) goto out;
-			dst = memcpy(dst, src, block_size);		
-			total_bytes += block_size;
-		}																						
-		if(remain) {																			
-			dst = memcpy(dst, src, remain);		
-			total_bytes += remain;
+	t = bench_second();
+	if(thread->use_cache) {
+		CPU_DATA_TYPE value = rand() % limit;
+		while(1) {
+			if(unlikely(i >= size)) i = 0;
+			a[i++] = value;
+			total += type_size;
+			if(unlikely(status != gpu_test_status))	 goto out;							
 		}
-	}
+	} else {
+		while(1) {
+			if(unlikely(i >= size)) i = 0;
+			a[i++] = rand() % limit;
+			total += type_size;
+			if(unlikely(status != gpu_test_status))	 goto out;							
+		}
+	} 
 
 out:
-	gettimeofday(&stop, NULL);
-	elapse=((double)(stop.tv_sec * 1000000 - start.tv_sec * 1000000 + 
-			stop.tv_usec - start.tv_usec))/1000000;
+	elapse = (bench_second() - t);
 	
 	if(status == HOST_TO_DEVICE || status == DEVICE) {
-		bench_print_out(data->core, data->thread, elapse, (double)total_bytes / MB);
+		bench_print_out(name, thread->cpu_id, thread->thread_id, elapse, (double)total / MB);
 	}
 
 	status = gpu_test_status;
-	total_bytes = 0;
+	total = 0;
 	pthread_barrier_wait(&gpu_barrier);										//all thread and gpu ready!
 
 	if(gpu_test_status != COMPLETE) goto retry;
 	
 	return NULL;
-
-fail_b:
-	free(a);
-fail_a:
-	pthread_exit((void *)1);*/
-
 }
 
 void cpu_bench_copy(struct thread *thread)
@@ -445,7 +432,7 @@ bool cpu_bench_init(struct bench_config *con)
 				con->cpu_con->cpus[cpu_id].threads[thread_id].thread_func = cpu_bench_worker;
 
 			if(use_cpu && use_gpu) 
-				con->cpu_con->cpus[cpu_id].threads[thread_id].thread_func = cpu_co_gpu_worker;
+				con->cpu_con->cpus[cpu_id].threads[thread_id].thread_func = cpu_benckend_worker;
 
 			cpu_set_t cpu_info;
 			CPU_ZERO(&cpu_info);

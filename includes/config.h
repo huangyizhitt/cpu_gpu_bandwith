@@ -18,7 +18,7 @@ extern bool use_cpu;
 #define DEFAULT_TEST_TYPE					ALL
 #define DEFAULT_CPU_DATA_TYPE				long
 #define DEFAULT_GPU_DATA_TYPE				long
-#define DEFAULT_USE_CACHE					true
+#define DEFAULT_USE_CACHE					false
 
 #ifndef CPU_DATA_TYPE
 #define CPU_DATA_TYPE						DEFAULT_CPU_DATA_TYPE
@@ -73,6 +73,7 @@ struct gpu_config {
 	enum test_type type;							//test type
 	long long size;									//test data size in bytes
 	int bytes_per_element;							//bytes per array element
+	pthread_t tid;									//the thread start gpu task
 	bool use_cache;									//use cache or no
 };
 
