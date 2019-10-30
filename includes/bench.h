@@ -3,15 +3,12 @@
 
 #include <stdbool.h>
 
-#define READY 	0
-#define BUSY	1
-
 #define TRUE	1
 #define FALSE	0
 
 #define likely(x)       __builtin_expect(!!(x),1)
 #define unlikely(x)     __builtin_expect(!!(x),0)
-
+#define ACCESS_ONCE(x) (*(volatile typeof(x) *)&(x))
 
 enum trans_status {
 	INIT=0,								//init status		
@@ -24,10 +21,15 @@ enum trans_status {
 	COMPLETE,							
 };
 
-
+enum thread_status {
+	READY=0,
+	BUSY,
+	DONE,
+};
+	
 extern enum trans_status test_status;
-extern bool **thread_status;
-extern pthread_barrier_t gpu_barrier;
+extern enum thread_status **thread_status;
+extern pthread_barrier_t g_barrier;
 enum trans_status gpu_test_status;
 
 double bench_second();	
@@ -41,22 +43,17 @@ void bench_print_out(const char *test_name, int core, int thread, double time, d
 void bench_default_argument(struct bench_config *con);
 
 
-static inline void bench_reset_thread_status(int core_id, int thread_id)
+static inline void bench_set_thread_status(int core_id, int thread_id, enum thread_status status)
 {
-	thread_status[core_id][thread_id] = READY;
+	ACCESS_ONCE(thread_status[core_id][thread_id]) = status;
 }
 
-static inline void bench_set_thread_status(int core_id, int thread_id)
-{
-	thread_status[core_id][thread_id] = BUSY;
-}
-
-static inline bool bench_all_thread_ready(int cores, int threads_per_core)
+static inline bool bench_all_thread_done(struct bench_config *con)
 {
 	int cpu_it, thread_it;
-	for(cpu_it = 0; cpu_it < cores; cpu_it++) {
-		for(thread_it = 0; thread_it < threads_per_core; thread_it++) {
-			if(thread_status[cpu_it][thread_it] == BUSY) return FALSE;
+	for(cpu_it = 0; cpu_it < con->cpu_con->cores; cpu_it++) {
+		for(thread_it = 0; thread_it < con->cpu_con->cpus[cpu_it].threads_num; thread_it++) {
+			if(ACCESS_ONCE(thread_status[cpu_it][thread_it]) != DONE) return FALSE;
 		}
 	}
 	return TRUE;

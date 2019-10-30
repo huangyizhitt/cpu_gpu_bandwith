@@ -38,8 +38,8 @@ int main(int argc, char **argv)
 
 	cpu_bench_init(con);
 	gpu_bench_init(con);
-	cpu_bench_finish(con);
 	gpu_bench_finish(con);
+	cpu_bench_finish(con);
 	cpu_bench_deinit(con);
 	bench_deinit(con);
 	return 0;

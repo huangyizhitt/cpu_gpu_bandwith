@@ -3,22 +3,23 @@
 
 #include <stdbool.h>
 
-extern bool use_gpu;
-extern bool use_cpu;
-
 #define DEFAULT_ALIGN						4096
-#define DEFALUT_THREADS_NUM_IN_CPU			1
+#define DEFALUT_THREADS_NUM_IN_CPU			5
 #define DEFAULT_LOOPS 						10
-#define DEFAULT_CPU_SIZE					10	
-#define DEFAULT_GPU_SIZE					100
+#define DEFAULT_CPU_SIZE					50	
+#define DEFAULT_GPU_SIZE					50
 #define DEFAULT_CONFIGURATION_FILE			"configs.xml"
 #define DEFAULT_CPU_NAME					"CPU"
 #define DEFAULT_GPU_NAME					"GPU"
 #define DEFAULT_CPU_CORES					sysconf(_SC_NPROCESSORS_ONLN)
-#define DEFAULT_TEST_TYPE					ALL
+#define DEFAULT_TEST_TYPE					SEQUENTIAL_WRITE
 #define DEFAULT_CPU_DATA_TYPE				long
 #define DEFAULT_GPU_DATA_TYPE				long
-#define DEFAULT_USE_CACHE					false
+#define DEFAULT_USE_CACHE					true
+#define DEFAULT_CPU_USE						FORWORD
+#define DEFAULT_GPU_USE						BENCKEND
+#define DEFAULT_GPU_TASK_CPU				0
+
 
 #ifndef CPU_DATA_TYPE
 #define CPU_DATA_TYPE						DEFAULT_CPU_DATA_TYPE
@@ -59,6 +60,10 @@ struct thread {
 	pthread_t tid;									//pthread tid
 	int cpu_id;										//cpu id of thread run in;
 	int thread_id;									//thread id in bench;
+
+	//output of per thread
+	double bandwidth;								//MB/s
+	double elapse;									//s
 };
 
 //CPU descriptor
@@ -74,6 +79,7 @@ struct gpu_config {
 	long long size;									//test data size in bytes
 	int bytes_per_element;							//bytes per array element
 	pthread_t tid;									//the thread start gpu task
+	pthread_attr_t attr;							//pthread attr
 	bool use_cache;									//use cache or no
 };
 
@@ -96,6 +102,15 @@ enum device {
 	FPGA,
 	UNKNOWN_DEVICE,
 };
+
+enum use_status {
+	UNUSED = 0,
+	FORWORD,
+	BENCKEND,
+};
+
+extern enum use_status use_gpu;
+extern enum use_status use_cpu;
 
 bool config_get_from_xml(char *xml, struct bench_config* con);
 struct bench_config *config_create(void);

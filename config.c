@@ -56,7 +56,7 @@ static bool thread_attributes_get_from_xml(xmlNodePtr thread_node, struct thread
 			thread[thread_id].size = to_bytes(cur_node);
 		} else if (!xmlStrcmp(cur_node->name, BAD_CAST"align")) {
 			thread[thread_id].align = to_bytes(cur_node);
-		} else if(!xmlStrchar(cur_node->name, BAD_CAST"cache")) {
+		} else if(!xmlStrcmp(cur_node->name, BAD_CAST"cache")) {
 			key = xmlNodeGetContent(cur_node);
 			thread[thread_id].use_cache = atoi(key);
 			xmlFree(key);
@@ -153,6 +153,10 @@ static struct cpu_config *cpu_config_create_from_xml(xmlNodePtr cpu_node)
 			}
 			con->total_threads += con->cpus[i].threads_num;
 			i++;
+		} else if(!xmlStrcmp(cur_node->name, BAD_CAST"CPU")) {
+			key = xmlNodeGetContent(cur_node);
+			use_cpu = atoi((char *)key);
+			xmlFree(key);
 		} else {
 //			printf("wrong xml format!\n");
 //			goto fail_format;
@@ -195,13 +199,18 @@ static struct gpu_config *gpu_config_create_from_xml(xmlNodePtr gpu_node)
 			key = xmlNodeGetContent(cur_node);
 			con->type = atoi(key);
 			xmlFree(key);
-		} else if(!xmlStrchar(cur_node->name, BAD_CAST"cache")) {
+		} else if(!xmlStrcmp(cur_node->name, BAD_CAST"cache")) {
 			key = xmlNodeGetContent(cur_node);
 			con->use_cache = atoi(key);
 			xmlFree(key);
+		} else if(!xmlStrcmp(cur_node->name, BAD_CAST"cache")) {
+			key = xmlNodeGetContent(cur_node);
+			use_gpu = atoi(key);
+			xmlFree(key);
 		} else {
-			
+
 		}
+		
 		cur_node = cur_node->next;
 	}
 

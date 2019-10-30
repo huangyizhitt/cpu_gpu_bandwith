@@ -11,14 +11,16 @@
 
 #define VERSION	"1.0"
 
-bool use_cpu = false;
-bool use_gpu = false;
+enum use_status use_cpu = UNUSED;
+enum use_status use_gpu = UNUSED;
 enum trans_status gpu_test_status;
 
-bool **thread_status;
-pthread_barrier_t gpu_barrier;
+enum thread_status **thread_status;
+pthread_barrier_t g_barrier;				//g_barrier of memory bandwith test for all threads
+
 
 static char *label[8] = {"All(Memcpy, SequentialWrite, Scale, Add, Triad)", "Memcpy", "SequentialWrite", "Scale", "Add", "Triad", "Unknown"};
+static char *use[3] = {"Unused", "Forward", "Benckend"};
 
 void bench_usage()
 {
@@ -76,26 +78,31 @@ void bench_process_input(int argc, char **argv, struct bench_config *con)
 		exit(1);
 	}
 	
-	while((opt = getopt(argc, argv, "hCGf:")) != EOF) {
+	while((opt = getopt(argc, argv, "hC:G:f:")) != EOF) {
 		switch(opt){
 			case 'h':
 				bench_usage();
 				exit(0);
 
 			case 'C':
-				use_cpu = true;
-				if(config_get_from_default(CPU, con) == false) {
-					printf("get CPU default config fail\n");
-					exit(1);
+				use_cpu=strtoul(optarg, (char **)NULL, 10);
+				if(use_cpu) {
+//				use_cpu = DEFAULT_CPU_USE;
+					if(config_get_from_default(CPU, con) == false) {
+						printf("get CPU default config fail\n");
+						exit(1);
+					}
 				}
 				break;
 			
 			case 'G':
-				use_gpu = true;
-				if(config_get_from_default(GPU, con) == false) {
-					printf("get GPU default config fail\n");
-					exit(1);
-				}
+				use_gpu = strtoul(optarg, (char **)NULL, 10);
+				if(use_gpu) {
+					if(config_get_from_default(GPU, con) == false) {
+						printf("get GPU default config fail\n");
+						exit(1);
+					}
+				}	
 				break;
 
 			case 'f':
@@ -104,13 +111,6 @@ void bench_process_input(int argc, char **argv, struct bench_config *con)
 					exit(1);
 				}
 				
-				if(con->cpu_con) {
-					use_cpu = true;
-				}
-						
-				if(con->gpu_con) {
-					use_gpu = true;
-				}
 				break;
 				
 			default:
@@ -122,6 +122,7 @@ void bench_process_input(int argc, char **argv, struct bench_config *con)
 
 struct bench_config *bench_init(int argc, char **argv)
 {
+	int threads, cpu_id, thread_id, i, j;
 	srand((unsigned)time(NULL));
 
 	struct bench_config *con = config_create();
@@ -131,22 +132,67 @@ struct bench_config *bench_init(int argc, char **argv)
 	}
 	bench_process_input(argc, argv, con);
 
-	if(use_gpu)
-		gpu_test_status = INIT;
-
-	if(use_gpu && use_cpu) {
-		pthread_barrier_init(&gpu_barrier, NULL, con->cpu_con->total_threads+1);
+	if(!use_cpu && !use_gpu) {
+		printf("no device used!\n");
+		exit(0);
 	}
 
+	if(use_cpu == FORWORD) {
+		thread_status = (enum thread_status **)malloc(sizeof(enum thread_status *) * con->cpu_con->cores);
+		if(!thread_status) {
+			printf("allocate thread status fail\n");
+			goto fail_cpu;
+		}
+
+		for(cpu_id = 0; cpu_id < con->cpu_con->cores; cpu_id++) {
+			thread_status[cpu_id] = (enum thread_status *)malloc(sizeof(enum thread_status) * con->cpu_con->cpus[cpu_id].threads_num);
+			if(!thread_status[cpu_id]) {
+				printf("allocate thread status fail\n");
+				goto fail_thread;
+			}	
+			for(thread_id = 0; thread_id < con->cpu_con->cpus[cpu_id].threads_num; thread_id++) {
+				bench_set_thread_status(cpu_id, thread_id, READY);
+			}
+		}
+	}
+	
+	if(use_gpu)
+		ACCESS_ONCE(gpu_test_status) = INIT;
+
+	if(use_cpu) {
+		threads = con->cpu_con->total_threads;
+
+		if(use_gpu)
+			pthread_barrier_init(&g_barrier, NULL, threads + 1);				//all cpu thread and gpu task thread
+
+		if(!use_gpu)
+			pthread_barrier_init(&g_barrier, NULL, threads);		
+	}
+	
 	return con;
+	
+fail_thread:
+	for(i = 0; i < cpu_id; i++)
+	{
+		free(thread_status[i]);
+	}
+
+fail_cpu:
+	free(con);
+	return NULL;
 }
 
 void bench_deinit(struct bench_config *con)
 {
-	if(use_cpu && use_gpu) {
-		pthread_barrier_destroy(&gpu_barrier);
-	}
+	if(use_cpu)
+		pthread_barrier_destroy(&g_barrier);
 
+	if(use_cpu == FORWORD) {
+		for(int cpu_id = 0; cpu_id < con->cpu_con->cores; cpu_id++) {
+			free(thread_status[cpu_id]);
+		}
+		free(thread_status);
+	}
 	config_destroy(con);
 }
 
