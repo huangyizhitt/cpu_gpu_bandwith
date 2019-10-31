@@ -234,7 +234,7 @@ static void bench_gpu_print_out(const char *name, long long size, float trans_ba
 {
 	printf("[%s]\t", name);
 	printf("MiB: %lld\t", size / MB);
-	printf("Transmission bandwidth between cpu and gpu: %.5f\t", trans_bandwidth);
+	printf("Transmission bandwidth between cpu and gpu: %.3f\t", trans_bandwidth);
     printf("GPU access memory bandwidth: %.3f MiB/s\n", access_bandwidth);
 }
 

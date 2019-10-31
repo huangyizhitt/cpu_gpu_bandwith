@@ -153,7 +153,7 @@ void gpu_bench_benckend(struct bench_config *con)
 void gpu_bench_forward(struct bench_config *con)
 {
 	unsigned int bytes = con->gpu_con->size * sizeof(unsigned char); 
-	float bandwidth;
+	struct gpu_config *gpu_con = con->gpu_con;
 	unsigned char *array = gpu_array_make_uma(con->gpu_con->size * sizeof(unsigned char));
 
 	
@@ -167,11 +167,11 @@ void gpu_bench_forward(struct bench_config *con)
 	{
 		array[i] = value;
 	}
-	bandwidth = test_host_to_device_uma(array, bytes, 1);
-	printf("Host to device: %.3f MiB/s\n", bandwidth);
+	gpu_con->trans_bandwidth = test_host_to_device_uma(array, bytes, 1);
+//	printf("Host to device: %.3f MiB/s\n", bandwidth);
 
-	bandwidth = test_device_access(array, bytes);
-	printf("device access memory: %.3f MiB/s\n", bandwidth);
+	gpu_con->access_bandwidth = test_device_access(array, bytes);
+//	printf("device access memory: %.3f MiB/s\n", bandwidth);
 	
 	gpu_array_destroy(array);
 	ACCESS_ONCE(gpu_test_status) = COMPLETE;

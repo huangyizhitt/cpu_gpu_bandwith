@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #define DEFAULT_ALIGN						4096
-#define DEFALUT_THREADS_NUM_IN_CPU			1
+#define DEFALUT_THREADS_NUM_IN_CPU			4
 #define DEFAULT_LOOPS 						10
 #define DEFAULT_CPU_SIZE					50	
 #define DEFAULT_GPU_SIZE					50
