@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #define DEFAULT_ALIGN						4096
-#define DEFALUT_THREADS_NUM_IN_CPU			5
+#define DEFALUT_THREADS_NUM_IN_CPU			1
 #define DEFAULT_LOOPS 						10
 #define DEFAULT_CPU_SIZE					50	
 #define DEFAULT_GPU_SIZE					50
@@ -81,6 +81,8 @@ struct gpu_config {
 	pthread_t tid;									//the thread start gpu task
 	pthread_attr_t attr;							//pthread attr
 	bool use_cache;									//use cache or no
+	float trans_bandwidth;							//transmission bandwidth between cpu and gpu
+	float access_bandwidth;							//gpu access memory bandwidth
 };
 
 struct cpu_config{

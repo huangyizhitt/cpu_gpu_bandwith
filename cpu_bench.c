@@ -156,7 +156,7 @@ out:
 	elapse = (bench_second() - t);
 	
 	if(status == DEVICE) {
-		bench_print_out(name, thread->cpu_id, thread->thread_id, elapse, (double)total / MB);
+//		bench_print_out(name, thread->cpu_id, thread->thread_id, elapse, (double)total / MB);
 	}
 
 	

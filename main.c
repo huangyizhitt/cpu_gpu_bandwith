@@ -41,6 +41,7 @@ int main(int argc, char **argv)
 	gpu_bench_finish(con);
 	cpu_bench_finish(con);
 	cpu_bench_deinit(con);
+	bench_print_out(con);
 	bench_deinit(con);
 	return 0;
 }

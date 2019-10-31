@@ -19,8 +19,8 @@ enum thread_status **thread_status;
 pthread_barrier_t g_barrier;				//g_barrier of memory bandwith test for all threads
 
 
-static char *label[8] = {"All(Memcpy, SequentialWrite, Scale, Add, Triad)", "Memcpy", "SequentialWrite", "Scale", "Add", "Triad", "Unknown"};
-static char *use[3] = {"Unused", "Forward", "Benckend"};
+const char *label[8] = {"All(Memcpy, SequentialWrite, Scale, Add, Triad)", "Memcpy", "SequentialWrite", "Scale", "Add", "Triad", "Unknown"};
+const char *use[3] = {"Unused", "Forward", "Benckend"};
 
 void bench_usage()
 {
@@ -220,13 +220,48 @@ void bench_print_config(struct bench_config *con)
 	}
 }
 
-void bench_print_out(const char *name, int core, int thread, double time, double size)
+static void bench_cpu_print_out(const char *name, int cpu_id, int thread_id, long long size, double elapse, double bandwidth)
 {
 	printf("[%s]\t", name);
+	printf("Core: %d\t", cpu_id);
+	printf("Thread: %d\t", thread_id);
+	printf("MiB: %lld\t", size / MB);
+	printf("Elapsed: %.5f\t", elapse);
+    printf("Copy: %.3f MiB/s\n", bandwidth);
+}
+
+static void bench_gpu_print_out(const char *name, long long size, float trans_bandwidth, float access_bandwidth)
+{
+	printf("[%s]\t", name);
+	printf("MiB: %lld\t", size / MB);
+	printf("Transmission bandwidth between cpu and gpu: %.5f\t", trans_bandwidth);
+    printf("GPU access memory bandwidth: %.3f MiB/s\n", access_bandwidth);
+}
+
+void bench_print_out(struct bench_config *con)
+{
+/*	printf("[%s]\t", name);
 	printf("Core: %d\t", core);
 	printf("Thread: %d\t", thread);
 	printf("Elapsed: %.5f\t", time);
     printf("MiB: %.5f\t", size);
-    printf("Copy: %.3f MiB/s\n", size/time);
+    printf("Copy: %.3f MiB/s\n", size/time);*/
+
+	int cpu_id, thread_id;
+
+	if(con->cpu_con) {
+		for(cpu_id = 0; cpu_id < con->cpu_con->cores; cpu_id++) {
+			for(thread_id = 0; thread_id < con->cpu_con->cpus[cpu_id].threads_num; thread_id++) {
+				bench_cpu_print_out(label[con->cpu_con->cpus[cpu_id].threads[thread_id].type], 
+					cpu_id, thread_id, con->cpu_con->cpus[cpu_id].threads[thread_id].size,
+					con->cpu_con->cpus[cpu_id].threads[thread_id].elapse,
+					con->cpu_con->cpus[cpu_id].threads[thread_id].bandwidth);
+			}
+		}
+	}
+
+	if(con->gpu_con) {
+		bench_gpu_print_out("GPU Test", con->gpu_con->size, con->gpu_con->trans_bandwidth, con->gpu_con->access_bandwidth);
+	}
 }
 

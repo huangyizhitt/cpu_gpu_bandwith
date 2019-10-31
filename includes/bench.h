@@ -39,7 +39,7 @@ void bench_process_input(int argc, char **argv, struct bench_config *con);
 struct bench_config *bench_init(int argc, char **argv);
 void bench_deinit(struct bench_config *con);
 void bench_print_config(struct bench_config *con);
-void bench_print_out(const char *test_name, int core, int thread, double time, double size);
+void bench_print_out(struct bench_config *con);
 void bench_default_argument(struct bench_config *con);
 
 
